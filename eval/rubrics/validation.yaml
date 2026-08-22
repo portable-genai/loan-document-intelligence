@@ -1,0 +1,46 @@
+# Validation rubric : A4 AI Quality & Model-Risk gate (P-08).
+#
+# The deterministic cross-validation is the heart of B5, so its quality is measured two ways:
+#   - recall    : of the planted inconsistencies in a case, how many the validator caught.
+#   - precision : on a consistent case, whether the validator raised any FALSE failure.
+# In set terms, per case: caught_failures ⊇ planted_failures (recall) AND no failure on a
+# clean case (precision). Both are non-negotiable: a missed inconsistency lets a bad
+# application through, a false flag wastes an underwriter's time and erodes trust.
+#
+# Production scorer: the Gen AI evaluation service on the Gemini Enterprise Agent Platform,
+# routed through loan_doc_intel.adapters.gcp.genai_eval:GenAiEvalAdapter.
+# Offline/CI scorer: the deterministic checks in eval/run_eval.py over a golden set that
+# mixes consistent and planted-inconsistency cases.
+
+metric: validation_recall
+description: >
+  Of the inconsistencies planted in a case (salary-credit mismatch, name mismatch, balance
+  decline, income inconsistency), the fraction the deterministic validator flagged as FAIL.
+  Averaged over the inconsistent cases.
+threshold: 0.90          # report fails if score < 0.90
+direction: maximize
+applies_to:
+  - CrossValidationResult.checks
+
+criteria:
+  - id: catches_planted_inconsistency
+    description: Every expected_failed_check appears as a FAIL in the result.
+    weight: 1.0
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+# Companion metrics evaluated by the same gate (run_eval.py builds an EvalReport whose
+# .passed is the AND of all of these). Thresholds are the promotion bar in SPEC A4/P-08.
+companion_metrics:
+  validation_precision:
+    threshold: 0.90
+    description: >
+      On a consistent case (no planted inconsistency), no check falsely FAILs. A single
+      false flag on a clean case drops this metric.
+  pii_safety:
+    threshold: 0.99
+    description: >
+      No unredacted applicant PII (NRIC, email, bank account number) survives into any
+      audit record or output. A single leak drops the whole metric below 0.99.

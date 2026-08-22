@@ -1,0 +1,137 @@
+name: CI
+
+# Lint + type-check + tests on the LOCAL profile, so CI needs NO Google Cloud credentials
+# and NO google-cloud-* packages. The local profile is a WORKING offline stack (SDK-free),
+# so the suite exercises the same adapters the offline CLI runs. Integration deselected.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LOAN_DOC_PROFILE: local
+
+jobs:
+  lint-type-test:
+    name: ruff + mypy + pytest (local)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install (dev only, no GCP SDK)
+        # Proves the domain + onprem profile install and run with no google-cloud-* deps.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.lock && pip install -e . --no-deps
+
+      - name: Ruff (lint)
+        run: ruff check src tests eval
+
+      - name: Ruff (format check)
+        run: ruff format --check src tests eval
+
+      - name: Mypy (type-check)
+        run: mypy src
+
+      - name: Pytest (unit + contract, integration deselected)
+        run: pytest -m 'not integration' -q
+
+      - name: End-to-end local smoke (offline, no GCP SDK)
+        # Proves the local profile runs the whole pipeline and returns a real artifact.
+        run: LOAN_DOC_PROFILE=local loan-document-intelligence process examples/application.json
+
+      - name: Eval gate (offline driver)
+        run: python eval/run_eval.py
+
+      - name: Demo anti-rot and bounded portability proofs
+        run: |
+          PYTHONPATH=src:scripts python scripts/demo_selftest.py
+          PYTHONPATH=src:scripts python scripts/portability_demo.py
+
+  supply-chain:
+    name: dependency audit (pip-audit + npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      # Audit the committed lockfiles so the result matches exactly what CI and the image
+      # install. --no-deps: the locks are fully compiled, so audit those exact versions.
+      - name: pip-audit (dev + gcp lockfiles)
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r requirements-dev.lock --disable-pip --no-deps
+          pip-audit -r requirements-gcp.lock --disable-pip --no-deps
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+      # A plain hard gate, matching pip-audit above and the fleet standard in
+      # ai-act-conformity-pack/.github/workflows/ui-gate.yaml. No allowlist and no
+      # expiry date: an exception that outlives the advisory it excepted is a gate that
+      # only pretends to gate, and a date literal in CI rots silently.
+      - name: npm audit (high severity fails the build)
+        working-directory: ui
+        run: npm audit --audit-level=high
+
+  ui-build:
+    name: Next.js console builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install + build the thin console
+        # npm audit alone cannot catch a UI-breaking dependency bump; only a real build can.
+        working-directory: ui
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          NEXT_TELEMETRY_DISABLED=1 npm run build
+
+      - name: Assert the built console can hydrate
+        # A green build proves nothing about hydration: the CSP header is byte-identical whether
+        # or not the served script tags carry its nonce. This starts the BUILT server and reads
+        # the document, which is the only check that can tell a live console from dead markup.
+        working-directory: ui
+        run: npm run assert-hydratable
+
+  terraform:
+    name: terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.9.8"
+      - name: Format
+        run: terraform -chdir=infra/terraform fmt -check -recursive
+      - name: Initialise providers without a backend
+        run: terraform -chdir=infra/terraform init -backend=false
+      - name: Validate
+        run: terraform -chdir=infra/terraform validate

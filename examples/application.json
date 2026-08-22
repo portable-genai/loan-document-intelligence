@@ -1,0 +1,18 @@
+{
+  "application": {
+    "id": "app-fictional-0001",
+    "name": "Jordan Tester Fictional",
+    "address": "123 Imaginary Road, Singapore 000000",
+    "declared_income": {
+      "source_doc_id": "declared",
+      "amount": 6500.0,
+      "currency": "SGD",
+      "period": "monthly",
+      "kind": "salary"
+    }
+  },
+  "documents": [
+    {"id": "doc-payslip-2026-04", "doc_type": "payslip", "uri": "local://app-0001/payslip-2026-04.txt"},
+    {"id": "doc-bank-2026-04", "doc_type": "bank_statement", "uri": "local://app-0001/bank-2026-04.txt"}
+  ]
+}

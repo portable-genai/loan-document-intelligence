@@ -1,0 +1,32 @@
+# terraform.tfvars.example : copy to terraform.tfvars and fill in the per-tenant values.
+# Only project_id, org_id (and a few genuinely per-tenant toggles) are required; every
+# service identifier, location and template name is concrete in the .tf files.
+
+project_id = "your-sg-resident-project"
+org_id     = "123456789012"
+api_image  = "asia-southeast1-docker.pkg.dev/your-project/grc/loan-doc-api@sha256:replace-with-reviewed-digest"
+
+# Pinned to Singapore; the variable validation rejects any other region (P-03).
+region = "asia-southeast1"
+zone   = "asia-southeast1-a"
+
+# WORM audit retention. Default is ~7 years and the bucket lock is irreversible (P-08).
+retention_days = 2557
+lock_audit_bucket  = false # true only after retention approval; irreversible
+deletion_protection = false # true in production
+
+# VPC Service Controls perimeter (P-03). When true, supply an Access Context Manager
+# policy id created once per org.
+enable_vpc_sc    = true
+access_policy_id = "987654321098"
+vpc_sc_enforce   = false # promote only after reviewing dry-run violations
+
+# Production posture. Setting this true makes Terraform reject incomplete guardrails.
+production_mode     = false
+enable_org_policies = false
+iap_jwt_audience    = ""
+alert_notification_channels = []
+
+# Optional FinOps tagging.
+billing_account  = ""
+vpc_network_name = "loan-doc-vpc"

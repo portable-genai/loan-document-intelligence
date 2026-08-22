@@ -1,0 +1,33 @@
+# Extraction-accuracy rubric : A4 AI Quality & Model-Risk gate (P-08).
+#
+# "Extraction accuracy" measures whether Document AI produced a usable structured extract
+# for each applicant document : the fields and line items the deterministic cross-validation
+# depends on (net pay, salary credits, balances, name, address). A document that yields an
+# empty extract is a failure, because the downstream checks then silently degrade to WARN.
+#
+# Production scorer: the Gen AI evaluation service on the Gemini Enterprise Agent Platform,
+# routed through loan_doc_intel.adapters.gcp.genai_eval:GenAiEvalAdapter.
+# Offline/CI scorer: the deterministic check in eval/run_eval.py (fraction of expected
+# documents that produced a non-empty extract), so the gate runs with no GCP credentials.
+
+metric: extraction_accuracy
+description: >
+  Fraction of an application's documents that produced a non-empty structured extract.
+  Averaged over the dataset.
+threshold: 0.80          # report fails if score < 0.80
+direction: maximize
+applies_to:
+  - DocumentExtract.fields
+  - DocumentExtract.line_items
+
+criteria:
+  - id: fields_present
+    description: The extract carries the fields the cross-validation reads (net pay, name).
+    weight: 0.6
+  - id: line_items_present
+    description: Bank-statement extracts carry dated salary credits and balances.
+    weight: 0.4
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"

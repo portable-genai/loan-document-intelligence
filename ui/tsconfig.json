@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "ES2021"
+    ],
+    // `proxy.ts` imports the plain-JS policy module `lib/csp.mjs` (plain JS so `next.config.mjs`
+    // and `node --test` can import the SAME module, with no build step between them). Without
+    // allowJs, tsc reports TS7016 "could not find a declaration file" and the build fails.
+    // checkJs stays off: the module is JSDoc-annotated, not type-checked as TypeScript.
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "forceConsistentCasingInFileNames": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

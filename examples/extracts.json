@@ -1,0 +1,53 @@
+{
+  "application_id": "app-fictional-0001",
+  "applicant": {
+    "id": "app-fictional-0001",
+    "name": "Jordan Tester Fictional",
+    "address": "123 Imaginary Road, Singapore 000000",
+    "declared_income": {
+      "source_doc_id": "declared",
+      "amount": 6500.0,
+      "currency": "SGD",
+      "period": "monthly",
+      "kind": "salary"
+    }
+  },
+  "extracts": [
+    {
+      "document_id": "doc-payslip-2026-04",
+      "doc_type": "payslip",
+      "fields": {
+        "title": "Payslip 2026-04",
+        "name": "Jordan Tester Fictional",
+        "address": "123 Imaginary Road, Singapore 000000",
+        "employer": "Fictional Holdings Pte Ltd",
+        "net_pay": "6500.00",
+        "gross_pay": "7800.00"
+      },
+      "period": "2026-04",
+      "confidence": 0.96,
+      "citations": [
+        {"source_id": "doc-payslip-2026-04", "source_type": "document", "title": "Payslip 2026-04", "field": "net_pay"}
+      ]
+    },
+    {
+      "document_id": "doc-bank-2026-04",
+      "doc_type": "bank_statement",
+      "fields": {
+        "title": "Bank Statement 2026-04",
+        "name": "Jordan Tester Fictional",
+        "address": "123 Imaginary Road, Singapore 000000"
+      },
+      "line_items": [
+        {"label": "Opening balance", "amount": 12000.0, "currency": "SGD", "date": "2026-04-01"},
+        {"label": "Salary credit", "amount": 6500.0, "currency": "SGD", "date": "2026-04-25"},
+        {"label": "Closing balance", "amount": 15800.0, "currency": "SGD", "date": "2026-04-30"}
+      ],
+      "period": "2026-04",
+      "confidence": 0.93,
+      "citations": [
+        {"source_id": "doc-bank-2026-04", "source_type": "document", "title": "Bank Statement 2026-04", "field": "salary_credit"}
+      ]
+    }
+  ]
+}
