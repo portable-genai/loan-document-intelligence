@@ -50,7 +50,7 @@ The default `local` path imports no `google-cloud-*` package.
 ## 3. Tech stack (pinned, mid-2026 GA)
 
 - Models: reasoning `gemini-3.5-flash` (thinking=high), triage `gemini-3.1-flash-lite`.
-  Unified SDK `google-genai`. ADK `google-adk==2.3.0`. A2A v1.0 + MCP 2025-11-25.
+  Unified SDK `google-genai`. ADK `google-adk==2.7.1`. A2A v1.0 + MCP 2026-07-28.
 - Extraction: Document AI (a form/lending parser) in `asia-southeast1`.
 - Safety: Model Armor (guardrail) + Sensitive Data Protection / DLP (PII redaction).
 - Audit: Cloud Logging locked WORM bucket, retention 2557 days. Tracing: Cloud Trace via
