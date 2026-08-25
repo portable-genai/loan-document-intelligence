@@ -15,25 +15,59 @@ from __future__ import annotations
 from typing import Any
 
 from hex_service_kit.assertion import require_claims, require_pinned_algorithm
+from hex_service_kit.federation import IAP_ASSERTION_HEADER, IAP_ISSUER, IAP_KEYS_URL
 from hex_service_kit.identity import IdentityError as AssertionRefused
 
 from ...config import Settings
 from ...domain.identity import IdentityError, Principal, RequestContext
 from ...envread import read_env_setting
-from ...ports.identity import VERIFIED
+from ...ports.identity import VERIFIED, EndUserAuthUnavailableError
 
-_ASSERTION_HEADER = "x-goog-iap-jwt-assertion"
-_IAP_KEYS_URL = "https://www.gstatic.com/iap/verify/public_key"
+# The three transport facts are REBOUND from the kit, not re-declared here. They are the same
+# three strings in every repository that verifies an IAP assertion, and while each kept its own
+# copy the population could drift with nothing to notice: a repo that edited one of them alone
+# would still gate green, because a literal always agrees with itself.
+_ASSERTION_HEADER = IAP_ASSERTION_HEADER
+_IAP_KEYS_URL = IAP_KEYS_URL
 
 #: The issuer every IAP assertion carries. ``verify_token`` does not check the issuer at all
 #: (``verify_oauth2_token`` is the wrapper that does), so this adapter checks it itself. The
 #: docstring above claimed the issuer was verified long before anything verified it.
-_IAP_ISSUER = "https://cloud.google.com/iap"
+_IAP_ISSUER = IAP_ISSUER
 
 #: The claims this deployment requires before it reads any of them. ``email`` is here because it
 #: is the subject the audit record attributes to; the previous ``email or sub`` reader accepted
 #: an assertion carrying only one of them and could not tell an absent claim from an empty one.
 _REQUIRED_CLAIMS = ("iss", "sub", "email", "exp")
+
+
+_VERIFIER_UNAVAILABLE = (
+    "the IAP assertion verifier is not installed, so this deployment can authenticate nobody. "
+    "Install the managed extra (pip install -r requirements-gcp.lock, or '.[gcp]') so "
+    "google-auth is importable, or run a profile whose identity adapter needs no cloud SDK."
+)
+
+
+class IapAudienceUnconfiguredError(EndUserAuthUnavailableError):
+    """No audience is configured, so nobody can be authenticated on this deployment.
+
+    503 rather than 401: a caller who presented a perfectly good IAP assertion would be refused
+    in exactly the same way, so inviting them to authenticate would be a lie. The message names
+    the variable, because the fix is in the deployment and not in the request.
+    """
+
+    http_status = 503
+
+
+class IapVerifierUnavailableError(EndUserAuthUnavailableError):
+    """google-auth is not importable, so no assertion can be checked at all.
+
+    Also 503, and for the same reason. This exists so the missing-SDK case is a refusal with a
+    reason instead of the bare 500 an unwrapped ModuleNotFoundError produced: an uncredentialed
+    caller got an empty error page and the operator got nothing to read.
+    """
+
+    http_status = 503
 
 
 class IapIdentityAdapter:
@@ -57,15 +91,25 @@ class IapIdentityAdapter:
         self._audience = read_env_setting("LOAN_DOC_IAP_AUDIENCE").value
 
     def resolve(self, ctx: RequestContext) -> Principal:
-        # The configuration check comes FIRST, before the assertion is even read. An
-        # unconfigured audience is a deployment that cannot authenticate anyone, and refusing
-        # on that alone means the refusal never depends on the Google SDK being importable or
-        # on what the caller presented.
+        # The configuration check comes FIRST, before the assertion header is even
+        # read. An unconfigured audience is a deployment that can authenticate
+        # nobody, so refusing on that alone means the refusal never depends on what
+        # the caller happened to present. Checked second, as it was, the deployment
+        # failure was reported only to callers who already had an assertion.
         if not self._audience:
-            raise IdentityError(
-                "LOAN_DOC_IAP_AUDIENCE is not configured; cannot verify IAP assertion"
+            raise IapAudienceUnconfiguredError(
+                "LOAN_DOC_IAP_AUDIENCE is not configured, so no IAP assertion can be verified "
+                "and this deployment can authenticate nobody. Verifying WITHOUT an "
+                "audience is not a fallback: google-auth documents audience=None as "
+                "'the audience is not verified', which would accept any "
+                "Google-signed OIDC token from any project or application. Set it to "
+                "the IAP-protected resource, /projects/<NUM>/global/backendServices/<ID>."
             )
-        assertion = ctx.header(_ASSERTION_HEADER)
+        # Stripped, so a header a proxy rendered blank is ABSENT rather than an
+        # assertion: a whitespace-only value is truthy, so it skipped this refusal
+        # and was refused further down by the algorithm pin instead, which reports a
+        # malformed token for what is actually a missing one.
+        assertion = ctx.header(_ASSERTION_HEADER).strip()
         if not assertion:
             raise IdentityError("missing IAP assertion header; request did not pass through IAP")
         # The algorithm is judged BEFORE the verifier is handed the token, with no cryptography
@@ -116,9 +160,15 @@ class IapIdentityAdapter:
             raise IdentityError(str(exc)) from exc
 
     def _verify(self, assertion: str) -> dict[str, Any]:
-        # Lazy import keeps the SDK-free profiles import-clean (mirrors the other gcp adapters).
-        from google.auth.transport import requests as google_requests
-        from google.oauth2 import id_token
+        try:
+            # Lazy import keeps the SDK-free profiles import-clean (mirrors the other gcp
+            # adapters). Inside the try because an uninstalled verifier must refuse with a
+            # reason and a status: unwrapped, the ModuleNotFoundError escaped resolve and
+            # get_principal entirely and FastAPI answered a bare 500 on every request.
+            from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token
+        except ImportError as exc:
+            raise IapVerifierUnavailableError(_VERIFIER_UNAVAILABLE) from exc
 
         try:
             claims: dict[str, Any] = id_token.verify_token(

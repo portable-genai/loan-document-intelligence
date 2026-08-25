@@ -19,7 +19,7 @@ dependencies = [
   # installs them with zero credentials. hex-service-kit: outbound S2S, fail-closed net defaults,
   # StrEnum base, to_jsonable, hash-chained WORM audit. agent-eval-kit: the Hrz4
   # promotion-gate client the platform eval adapter uses.
-  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.1",
+  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.3",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
   # review-kit: the producer half of rule R8 (route a requires_human_review escalation to the
   # Hrz7 Human-Review & Maker-Checker Console). Public repo, so CI installs it with zero credentials.

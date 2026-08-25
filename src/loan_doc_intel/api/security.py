@@ -16,6 +16,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 
 from ..domain.identity import IdentityError, Principal, RequestContext
+from ..ports.identity import EndUserAuthUnavailableError
 from . import deps
 
 
@@ -25,6 +26,11 @@ def get_principal(request: Request) -> Principal:
     identity = deps.get_container().identity
     try:
         return identity.resolve(ctx)
+    except EndUserAuthUnavailableError as exc:
+        # Ordered before the IdentityError branch, and it has to be: this is a subclass, so the
+        # broader branch would swallow it and answer the 401 this whole split exists to avoid.
+        # The message is the operator's, not the caller's, and it names the thing to fix.
+        raise HTTPException(status_code=exc.http_status, detail=str(exc)) from exc
     except IdentityError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
