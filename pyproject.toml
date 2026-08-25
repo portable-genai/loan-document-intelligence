@@ -45,8 +45,8 @@ gcp = [
   "google-cloud-logging>=3.11",
   "opentelemetry-sdk>=1.27",
   "opentelemetry-exporter-gcp-trace>=1.7",
-  "a2a-sdk>=0.2",
-  "mcp>=1.2",
+  "a2a-sdk>=1.1",
+  "mcp>=2.1",
 ]
 dev = [
   "pytest>=8.2",
