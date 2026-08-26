@@ -279,7 +279,7 @@ class FakeLLMAdapter:
     """Deterministic income normaliser (LLMPort): one salary figure per cited document."""
 
     def __init__(self) -> None:
-        self.model = "gemini-3.5-flash"
+        self.model = "gemini-3.7-flash"
 
     def generate(self, request: LlmRequest) -> LlmResponse:
         text = request.messages[-1].content if request.messages else ""

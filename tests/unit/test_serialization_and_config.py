@@ -102,7 +102,7 @@ def test_to_jsonable_audit_event_is_worm_serialisable():
 def test_settings_load_parses_yaml():
     settings = Settings.load(CONFIG_PATH)
     assert settings.region == "asia-southeast1"
-    assert settings.models.reasoning == "gemini-3.5-flash"
+    assert settings.models.reasoning == "gemini-3.7-flash"
     assert settings.models.triage == "gemini-3.1-flash-lite"
     assert settings.validation.amount_tolerance == pytest.approx(0.05)
     assert settings.validation.balance_decline_warn_ratio == pytest.approx(0.15)
