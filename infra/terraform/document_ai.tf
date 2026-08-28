@@ -1,8 +1,12 @@
 # document_ai.tf : the Document AI processor that parses applicant documents (B5 core).
 #
 # General Principle map:
-#   P-03 (residency): the processor is created in asia-southeast1 (Singapore) so document
-#         content is parsed in-country.
+#   P-03 (residency): PARTIAL, and stated rather than absorbed. The processor is created at
+#         var.docai_location, which defaults to the `us` MULTI-REGION -- so applicant document
+#         content is parsed in the United States while the rest of the stack stays in
+#         Singapore. Document AI serves asia-southeast1 only once Google grants single-region
+#         access; set var.docai_location (and LOAN_DOC_DOCAI_LOCATION) to asia-southeast1 the
+#         day it lands.
 #   P-01 (managed-first): extraction uses a managed Document AI processor rather than a
 #         self-hosted OCR/ML stack.
 #
@@ -11,7 +15,7 @@
 
 resource "google_document_ai_processor" "loan_docs" {
   project      = var.project_id
-  location     = var.region # asia-southeast1 : in-country document parsing (P-03)
+  location     = var.docai_location # NOT var.region: Document AI serves neither every region nor, yet, ours in-country
   display_name = "loan-document-intelligence-processor"
 
   # A form/document parser type covers payslips, bank statements, tax returns and

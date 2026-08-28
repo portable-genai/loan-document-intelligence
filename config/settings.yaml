@@ -45,7 +45,19 @@ models:
   use_hard_reasoning: false
 
 document_ai:
-  location: asia-southeast1
+  # NOT the deploy region, and not a silent inheritance of it. Document AI does not run in
+  # every Cloud region: creating a processor in an unsupported one 404s at apply.
+  #
+  # It DOES serve asia-southeast1 -- and notably serves no us-central1 endpoint at all -- but
+  # Singapore is "limited support": a subset of processors, several in Preview, and access is
+  # gated behind Google's Document AI Single Region Request Form. Until that request is
+  # granted this routes to the `us` MULTI-REGION, which is a stated residency deviation:
+  # document bytes are extracted in the United States while the rest of the stack stays in
+  # region. Set LOAN_DOC_DOCAI_LOCATION to asia-southeast1 the day access lands.
+  #
+  # `us` is a multi-region, not `global`: it names one jurisdiction. Never widen this to a
+  # region the service does not serve just to make an apply succeed.
+  location: ${LOAN_DOC_DOCAI_LOCATION:-us}
   processor_id: ${LOAN_DOC_DOCAI_PROCESSOR:-}
   processor_version: rc
 

@@ -63,11 +63,13 @@ table.
 
 ### Is data residency enforced?
 
-Yes, at deploy time: a single in-country region (default `asia-southeast1` / Singapore),
-validated to fail fast, with regional endpoints, CMEK (P-10), and a VPC-SC perimeter (P-01,
-P-09). One honest gap: the perimeter is currently an enforced `status {}` block rather than
-dry-run-first, there is no CI `terraform validate` job, and no Org Policy
-resource-location-allowlist / disable-SA-key resource yet (audit check **D5 (PARTIAL)**). The
+Yes at deploy time, with one stated exception: a single in-country region (default
+`asia-southeast1` / Singapore), validated to fail fast, with regional endpoints, CMEK (P-10),
+and a VPC-SC perimeter (P-01, P-09). **Document AI is not in-country:** it reaches
+`asia-southeast1` only once Google grants single-region access, so document extraction routes to
+the `us` multi-region until then. That is a jurisdiction, not a global endpoint. Other honest
+gaps: the perimeter is currently an enforced `status {}` block rather than dry-run-first, and
+there is no CI `terraform validate` job (audit check **D5 (PARTIAL)**). The
 residency-violation CI gate is the sibling **Rsk4 Data Residency / Sovereignty Validator**;
 the exit / concentration-risk plan is **Rsk5 Exit & Portability Planner**. This repo enforces
 residency in its own infra and is one of the systems those tools reason about.

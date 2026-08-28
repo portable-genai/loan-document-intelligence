@@ -157,3 +157,70 @@ variable "cors_origins" {
   type        = set(string)
   default     = []
 }
+
+variable "resource_location_values" {
+  description = <<-EOT
+    Value groups for the gcp.resourceLocations Org Policy. Empty (the default) derives the
+    strictest form from the deploy region: that region and its sub-locations, nothing else.
+
+    Widen it ONLY where a service this stack genuinely needs has no presence at single-region
+    granularity, and treat the width as the residency claim rather than as plumbing. Two
+    services in this catalog force the question:
+
+      * Agent Search serves `global`, `us` and `eu` and NO Cloud region at all.
+      * Document AI serves the deploy region only once Google grants single-region access,
+        and routes to the `us` multi-region until then.
+
+    Move to the smallest value group that still describes ONE JURISDICTION -- `in:us-locations`
+    keeps every resource inside the United States -- and state the residency claim at that
+    granularity rather than pretending it is still single-region. NEVER list an individual
+    foreign region to unblock one service: that turns a jurisdiction boundary into a list of
+    exceptions nobody can reason about.
+
+    NOT YET VERIFIED BY EXECUTION: whether a `global` Agent Search data store is subject to
+    this constraint at all, or is exempt as a global resource. Confirm at first apply and
+    record the answer rather than guessing; the failure mode if it IS subject is an apply
+    error naming discoveryengine, which is the good kind of failure.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for value in var.resource_location_values : startswith(value, "in:") || startswith(value, "is:")])
+    error_message = "Each value must be an Org Policy location value group (in:...) or a literal location (is:...)."
+  }
+}
+
+variable "docai_location" {
+  description = <<-EOT
+    Where the Document AI processor is CREATED. Deliberately NOT var.region.
+
+    Document AI does not serve every Cloud region, and creating a processor in one it does not
+    serve 404s at apply. It DOES serve asia-southeast1 -- and serves no us-central1 endpoint at
+    all -- but Singapore is "limited support": a subset of processors, several in Preview, and
+    access is gated behind Google's Document AI Single Region Request Form. Until that request
+    is granted this routes to the `us` MULTI-REGION, which is a stated residency deviation:
+    document bytes are extracted in the United States while the rest of the stack stays in
+    region. Set this to asia-southeast1 the day access lands.
+
+    Keep it equal to the runtime's LOAN_DOC_DOCAI_LOCATION, which selects the same location for
+    the adapter. If the two disagree, Terraform creates the processor in one location and the
+    adapter looks for it in another, and the failure surfaces as a confusing 404 at request
+    time rather than at apply.
+
+    `us` and `eu` are multi-regions, not `global`: each names ONE jurisdiction. Never widen
+    this to a location the service does not serve just to make an apply succeed. Whichever is
+    chosen, gcp.resourceLocations must be wide enough to permit it (see var.resource_location_values), and the
+    residency claim must be stated at that width rather than at var.region's.
+  EOT
+  type        = string
+  default     = "us"
+
+  validation {
+    # Mirrors the runtime rule: the deploy region, or a NAMED multi-region. `global` is refused
+    # by name because it names no jurisdiction, and so is any other single region -- an
+    # out-of-region single region would be a silent jurisdiction change dressed as a fix.
+    condition     = contains(["us", "eu"], var.docai_location) || var.docai_location == var.region
+    error_message = "docai_location must be the deploy region (var.region) or a named Document AI multi-region (us, eu). `global` names no jurisdiction and is refused."
+  }
+}
