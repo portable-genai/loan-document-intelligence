@@ -303,6 +303,12 @@ class LocalSettings:
     audit_path: str = ""  # append-only audit store; "" => ~/.loan_doc_intel/audit.db
 
 
+#: Multi-regions Document AI may use as a STATED residency deviation from the deploy region.
+#: Each names one jurisdiction and carries an ML-processing commitment for it. `global` is
+#: deliberately absent: it names no jurisdiction at all.
+_DOCUMENT_AI_MULTI_REGIONS = frozenset({"us", "eu"})
+
+
 @dataclass(frozen=True)
 class Settings:
     project_id: str = "your-gcp-project"
@@ -331,8 +337,23 @@ class Settings:
     def __post_init__(self) -> None:
         if self.region != "asia-southeast1":
             raise ValueError("region must remain in the approved allowlist: asia-southeast1")
-        if self.document_ai.location != self.region:
-            raise ValueError("Document AI location must match the approved deployment region")
+        # Document AI may sit in the deploy region, or in a NAMED MULTI-REGION as a stated
+        # deviation, and in nothing else. Singapore is "limited support" for Document AI and
+        # access is gated behind Google's Single Region Request Form, so until that is granted
+        # the bytes are extracted in the `us` multi-region while the rest of the stack stays in
+        # region. That is a disclosed residency deviation, not a widening: a multi-region names
+        # one jurisdiction and carries an ML-processing commitment for it.
+        #
+        # `global` is refused by name because it names NO jurisdiction, and it is precisely what
+        # someone reaches for to make an apply succeed. A different single region is refused too:
+        # it is neither the deploy region nor a multi-region commitment.
+        if self.document_ai.location not in {self.region, *_DOCUMENT_AI_MULTI_REGIONS}:
+            raise ValueError(
+                f"Document AI location {self.document_ai.location!r} must be the deploy region "
+                f"({self.region}) or a named multi-region "
+                f"({', '.join(sorted(_DOCUMENT_AI_MULTI_REGIONS))}). `global` names no "
+                "jurisdiction and is never acceptable here."
+            )
 
     @property
     def profile_choice(self) -> ProfileChoice:
