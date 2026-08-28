@@ -50,12 +50,19 @@ function isWildcard(token) {
  * Anything that is neither absolute nor rooted-relative is a typo that would silently narrow
  * `connect-src` to `'self'` and break every call, so it throws instead.
  *
+ * A protocol-relative value is refused for that same reason rather than read as rooted: it names
+ * a DIFFERENT host while looking same-origin, so taking it for same-origin would drop a genuinely
+ * cross-origin API out of `connect-src`.
+ *
  * @param {Record<string, string | undefined>} env
  * @returns {string} an origin to add to `connect-src`, or "" when same-origin
  */
 function apiOrigin(env) {
   const raw = (env.NEXT_PUBLIC_API_BASE || "").trim();
   if (!raw) return "";
+  if (raw.startsWith("//")) {
+    throw new Error(`NEXT_PUBLIC_API_BASE must name its scheme, got: ${raw}`);
+  }
   if (raw.startsWith("/")) return "";
   try {
     return new URL(raw).origin;

@@ -121,6 +121,15 @@ test("an API base that is neither absolute nor rooted is refused", () => {
   );
 });
 
+test("a protocol-relative API base is refused rather than read as same-origin", () => {
+  // It looks rooted and names another host. Reading it as same-origin would drop a genuinely
+  // cross-origin API out of connect-src, which is the silent narrowing above in disguise.
+  assert.throws(
+    () => contentSecurityPolicy({ NEXT_PUBLIC_API_BASE: "//api.client.example/v1" }, "n"),
+    /must name its scheme/,
+  );
+});
+
 test("nonces are unique and base64", () => {
   const seen = new Set();
   for (let i = 0; i < 50; i += 1) {
