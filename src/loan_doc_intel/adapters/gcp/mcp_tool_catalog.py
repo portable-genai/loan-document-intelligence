@@ -74,13 +74,19 @@ def _build_catalog() -> dict[str, ToolSpec]:
                 "Run the deterministic consistency checks across an applicant's document "
                 "extracts (salary-credit match, name/address, balance trend, affordability)."
             ),
+            # This declared ``extract_ids`` until 2026-08-28, and nothing in this service can
+            # resolve an extract id: ``CrossValidator.validate`` takes ``DocumentExtract``
+            # objects and no port maps an id to one. The declaration was written and never
+            # served, so nothing had checked it. Narrowed to the documents the checks actually
+            # run over, which is the shape ``process_application`` already uses, rather than
+            # inventing a store for ids that were never minted.
             input_schema={
                 "type": "object",
                 "properties": {
                     "application_id": {"type": "string"},
-                    "extract_ids": {"type": "array", "items": {"type": "string"}},
+                    "documents": {"type": "array", "items": _DOCUMENT_SCHEMA},
                 },
-                "required": ["application_id"],
+                "required": ["application_id", "documents"],
                 "additionalProperties": False,
             },
         ),
