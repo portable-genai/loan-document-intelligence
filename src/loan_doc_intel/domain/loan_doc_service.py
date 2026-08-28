@@ -342,10 +342,13 @@ class LoanDocService:
             source = str(raw.get("source_doc_id") or "").strip()
             if source not in known_ids:  # only cite documents we actually extracted
                 continue
+            amount = g.coerce_amount(raw.get("amount"))
+            if amount is None:  # unreadable is not zero; skip rather than fabricate a figure
+                continue
             out.append(
                 IncomeFigure(
                     source_doc_id=source,
-                    amount=g.coerce_amount(raw.get("amount")),
+                    amount=amount,
                     currency=str(raw.get("currency") or "SGD"),
                     period=g.coerce_period(raw.get("period")),
                     kind=g.coerce_kind(raw.get("kind")),

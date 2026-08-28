@@ -52,17 +52,34 @@ def coerce_kind(value: Any, default: IncomeKind = IncomeKind.SALARY) -> IncomeKi
     return default
 
 
-def coerce_amount(value: Any, default: float = 0.0) -> float:
-    """Coerce a model-emitted amount (possibly a string with separators) to float."""
+def coerce_amount(value: Any) -> float | None:
+    """Coerce a model-emitted amount to a float, or ``None`` when it is not a number.
+
+    Three states, never two. This returned ``0.0`` for anything it could not parse until
+    2026-08-28, so a model answering "not disclosed" or "see attached" produced an income figure
+    of 0.00 against a real source document and nothing downstream could tell that apart from a
+    genuine zero. These are money: a fabricated 0.00 drags a monthly average down and
+    manufactures a discrepancy against the applicant's declared income, so a clean file gets
+    flagged on a figure the lender never saw.
+
+    ``cross_validator._amount`` parses the same shape of string and has always returned ``None``.
+    The deterministic half of this repository was right and the model-facing half was not; this
+    is the model-facing half agreeing with it. The caller skips a figure it cannot read rather
+    than inventing one.
+    """
+    if isinstance(value, bool):  # bool is an int subclass, and True is not an amount
+        return None
     if isinstance(value, (int, float)):
         return float(value)
     if isinstance(value, str):
         cleaned = value.replace(",", "").replace("$", "").strip()
+        if not cleaned:
+            return None
         try:
             return float(cleaned)
         except ValueError:
-            return default
-    return default
+            return None
+    return None
 
 
 def render_extracts(extracts: list[DocumentExtract]) -> str:
@@ -194,7 +211,7 @@ def build_llm_request(
     model: str | None,
     response_schema: dict | None,
     thinking: ThinkingLevel = ThinkingLevel.HIGH,
-    temperature: float = 0.2,
+    temperature: float = 0.0,
     max_output_tokens: int = 4096,
 ) -> LlmRequest:
     """Assemble an ``LlmRequest`` with a single user message and a system prompt.
