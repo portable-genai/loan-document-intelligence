@@ -145,6 +145,18 @@ sequenceDiagram
   the guardrail and the audit sink; trace spans carry no message content.
 - **Always human-reviewed.** Every `LoanApplicationCase` is `requires_human_review = True`:
   the underwriter is the checker (P-06).
+- **The tool catalog is declared and deliberately not served.** Fourteen trees in the fleet serve
+  their catalog over MCP 2026-07-28 on stdio; this one does not, and the reason follows from the
+  invariant above it. Every domain entry point authorizes FIRST, fail-closed, against a
+  server-resolved owner: `LoanDocService._authorize` asks the `EntitlementsPort` who owns the
+  object and denies an unknown one outright. MCP stdio verifies no end user at all. The serving
+  trees rely on entitlement FILTERING, which degrades safely to public-only; this one is an
+  object-level gate that RAISES, so the same caller is refused every application and every
+  document. Serving it would bind cleanly and refuse every call, and supplying a principal
+  nobody verified would forge the entitlement the gate exists to check, on a service that reads
+  somebody's payslips.
+  `tests/unit/test_tool_catalog_is_declared_and_deliberately_unserved.py` executes that reason
+  rather than asserting it, and refuses an `mcp/` package appearing here until it has an answer.
 
 ## Kernel and vertical boundary
 
