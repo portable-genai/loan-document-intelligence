@@ -82,8 +82,17 @@ class _Load:
         return dict(json.loads(self.stdout.strip().splitlines()[-1]))
 
 
-def _run(probe: str, module: Path, value: str | None) -> _Load:
+def _run(probe: str, module: Path, value: str | None, node_env: str = "production") -> _Load:
+    """Evaluate the shipped module under ``node``.
+
+    ``node_env`` defaults to ``production`` because that is what a deployment runs and what
+    every assertion about the exact policy string below is about. The module keys one
+    deliberate relaxation off it (see :func:`test_the_dev_relaxations_exist_only_off_production`),
+    and a probe that let the ambient environment decide would silently test whichever branch
+    the runner happened to be on.
+    """
     env = dict(os.environ)
+    env["NODE_ENV"] = node_env
     if value is None:
         env.pop(_ENV, None)
     else:
@@ -98,9 +107,9 @@ def _run(probe: str, module: Path, value: str | None) -> _Load:
     return _Load(completed.returncode, completed.stdout, completed.stderr)
 
 
-def _load(value: str | None) -> _Load:
+def _load(value: str | None, node_env: str = "production") -> _Load:
     """Resolve ``ui/lib/csp.mjs`` with ``NEXT_PUBLIC_FRAME_ANCESTORS`` at ``value``."""
-    return _run(_PROBE, _CSP, value)
+    return _run(_PROBE, _CSP, value, node_env)
 
 
 def _directives(csp: str) -> dict[str, str]:
@@ -158,6 +167,30 @@ def test_the_document_policy_is_complete_and_nonce_bearing() -> None:
     assert directives["script-src"] == "'self' 'nonce-test-nonce' 'strict-dynamic'"
     # An empty directive is a CSP parse error: browsers discard it and the restriction vanishes.
     assert all(value for value in directives.values()), f"an empty directive in {directives}"
+
+
+def test_the_dev_relaxations_exist_only_off_production() -> None:
+    """The third defect, and the one that made `npm run dev` serve a dead console.
+
+    The policy above is correct and unservable by a development server: `next dev` compiles
+    with `eval` and its HMR client opens a websocket back to itself, so the page rendered and
+    React never attached. The module now adds `'unsafe-eval'` and `ws: wss:` when NODE_ENV is
+    anything other than the exact literal ``production``, which is a branch a `next build`
+    artefact cannot take. Both halves are asserted from the SHIPPED module in a real node
+    process, because the whole point is what the deployed bytes emit.
+    """
+    production = _directives(_load(None, node_env="production").payload["csp"])
+    assert "unsafe-eval" not in production["script-src"]
+    assert "ws:" not in production["connect-src"]
+
+    for value in ("development", "test"):
+        development = _directives(_load(None, node_env=value).payload["csp"])
+        assert "'unsafe-eval'" in development["script-src"], value
+        assert "ws: wss:" in development["connect-src"], value
+        # The relaxation is additive. The nonce still governs which scripts may run, and
+        # 'unsafe-inline' never comes back on any branch.
+        assert "'nonce-test-nonce' 'strict-dynamic'" in development["script-src"], value
+        assert "unsafe-inline" not in development["script-src"], value
 
 
 def test_next_config_emits_no_second_policy() -> None:

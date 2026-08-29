@@ -72,7 +72,8 @@ make demo-ui
 ```
 
 Pass advanced runner options directly when invoking `scripts/run_ui_demo.py`, for example
-`python scripts/run_ui_demo.py --from inconsistent --screenshots demo-out/walkthrough`.
+`python scripts/run_ui_demo.py --from inconsistent-case --screenshots demo-out/walkthrough`.
+Step ids are matched exactly, and `--list` prints them.
 
 A real browser opens; the script narrates each step and **waits for you to press Enter**
 before performing it, so you control the pace. (One-time: `pip install playwright &&
@@ -122,9 +123,12 @@ Or drive the **real React console** against the live API, exactly as a user woul
 # Terminal 1 : the API (profile=local, offline)
 make run-api PROFILE=local        # FastAPI on :8092
 
-# Terminal 2 : the Next.js console
-make run-ui                       # http://localhost:3000
+# Terminal 2 : the Next.js console, built and served the way it ships
+cd ui && npm install && npm run build && npm run start   # http://localhost:3000
 ```
+
+Every demo runs against a production build, never a development server. `make run-ui` is the
+developer loop with hot reload, and it is not what a presenter shows.
 
 Click **Process sample application** : the console calls `POST /v1/process` on `:8092` and
 renders the same `LoanApplicationCase` (income verification + cross-validation + extracts).
@@ -222,7 +226,7 @@ curl -s localhost:8092/healthz
 Or the browser console (talks to the API on :8092) : see [`ui/README.md`](ui/README.md):
 
 ```bash
-make run-ui           # http://localhost:3000
+cd ui && npm install && npm run build && npm run start   # http://localhost:3000
 ```
 
 The same console accepts those two GCS URIs in its document-source fields. Through Hrz9, use
@@ -272,7 +276,7 @@ stays in `asia-southeast1` with CMEK ([README "Compliance"](README.md#compliance
 | CLI exits with code 2 naming a migration target | You're on `LOAN_DOC_PROFILE=onprem` (fail-fast). Use `local` (Demo A) or `gcp` (Demo B). |
 | GCP deploy / region / CMEK errors | See [`docs/runbook.md`](docs/runbook.md) "Deploy" and "Residency and key rotation". |
 
-**Stop / clean up:** Ctrl-C the demo server, `make run-api` and `make run-ui`. For GCP,
+**Stop / clean up:** Ctrl-C the demo server, `make run-api` and the console. For GCP,
 scale the deployment to zero or remove the app SA's model-access role : the audit trail
 remains intact. `make clean` removes local caches/artefacts; `rm -rf demo-out out` removes
 the generated demo pages.

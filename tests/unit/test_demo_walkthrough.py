@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 import importlib.util
+import re
 import sys
 import types
 from pathlib import Path
@@ -91,6 +92,20 @@ def test_selection_is_inclusive_and_unknown_ids_fail() -> None:
 
 def test_list_mode_needs_no_playwright() -> None:
     assert walkthrough.main(["--list"]) == 0
+
+
+def test_every_from_step_quoted_in_demo_md_is_a_real_step_id() -> None:
+    """A resume id in the run sheet has to be one the runner accepts.
+
+    Matching is exact, so a shortened id is not a near miss: `selected_steps` raises and
+    `main` returns 2, which lands mid-presentation. DEMO.md quoted `--from inconsistent`
+    while the step is `inconsistent-case`, and nothing failed until a presenter typed it.
+    """
+    demo = (Path(__file__).parents[2] / "DEMO.md").read_text(encoding="utf-8")
+    quoted = re.findall(r"--from\s+([A-Za-z0-9][-A-Za-z0-9]*)", demo)
+    assert quoted, "DEMO.md documents no --from example, so this test guards nothing"
+    known = {step.id for step in walkthrough.STEPS}
+    assert set(quoted) <= known, f"DEMO.md names step ids the runner rejects: {set(quoted) - known}"
 
 
 def test_actions_complete_before_pause_and_no_pause_never_reads_stdin() -> None:
