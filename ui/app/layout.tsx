@@ -11,9 +11,9 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "B5 Loan Document Intelligence",
+  title: "Loan Document Intelligence",
   description:
-    "Demo console for the B5 Loan / Mortgage Document Intelligence service: Document AI extraction + deterministic cross-validation of applicant income.",
+    "Demo console for the Loan / Mortgage Document Intelligence service: Document AI extraction + deterministic cross-validation of applicant income.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <header className="mb-6 flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-ink-900">
-                  B5 · Loan / Mortgage Document Intelligence
+                  Loan / Mortgage Document Intelligence
                 </h1>
                 <p className="text-sm text-ink-500">
                   Document AI extraction + deterministic cross-validation. Decision-support
