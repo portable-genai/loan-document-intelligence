@@ -166,10 +166,24 @@ export function frameOptions(ancestors) {
  * @returns {string}
  */
 export function contentSecurityPolicy(env, nonce) {
-  const connectSrc = ["'self'", apiOrigin(env)].filter(Boolean).join(" ");
-  const scriptSrc = nonce
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
-    : "script-src 'self'";
+  // Dev only, and never emitted by a production build. `next dev` compiles with `eval` and its
+  // HMR client opens a websocket back to the dev server, so a policy refusing both serves a page
+  // that renders and never hydrates: React never attaches and every control is dead markup. The
+  // branch is keyed off the toolchain's own NODE_ENV, compared against the exact literal
+  // "production", so `next build` and `next start` cannot take it, and unset or emptied lands on
+  // the dev branch where nothing is deployed. `scripts/assert-hydratable.mjs` runs against the
+  // BUILT artefact, so a relaxation leaking into a deployment fails a gate, not a review.
+  const isDev = env.NODE_ENV !== "production";
+  const connectSrc = ["'self'", apiOrigin(env), isDev ? "ws: wss:" : ""]
+    .filter(Boolean)
+    .join(" ");
+  const scriptSrc = [
+    "script-src 'self'",
+    nonce ? `'nonce-${nonce}' 'strict-dynamic'` : "",
+    isDev ? "'unsafe-eval'" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return [
     "default-src 'self'",
     "base-uri 'self'",

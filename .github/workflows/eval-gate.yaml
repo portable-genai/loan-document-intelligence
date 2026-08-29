@@ -1,9 +1,12 @@
 name: Eval gate
 
-# The A4 / P-08 promotion gate. Runs eval/run_eval.py over the golden cases and fails
-# (non-zero exit) if any metric : extraction accuracy, validation recall, validation
-# precision, PII safety : is below threshold. A release must NOT be promoted to Agent
-# Runtime unless this job is green.
+# The pre-merge eval SMOKE check, and NOT the promotion authority. Runs eval/run_eval.py
+# --mode smoke over the golden cases and fails (non-zero exit) if any metric : extraction
+# accuracy, validation recall, validation precision, PII safety : is below threshold. That
+# is a merge decision, not a release one. The promotion VERDICT is Hrz4's, taken separately
+# at release time with --mode gate, which run_eval.py refuses outside the platform or gcp
+# profile and which this offline job therefore cannot produce. Workflow name kept stable
+# for branch protection.
 
 on:
   pull_request:
@@ -28,7 +31,7 @@ env:
 
 jobs:
   eval:
-    name: Gen AI eval gate
+    name: eval smoke check (pre-merge)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -44,6 +47,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.lock && pip install -e . --no-deps
 
-      - name: Run eval gate
-        # Non-zero exit fails the gate and blocks promotion.
-        run: python eval/run_eval.py
+      - name: Run eval smoke check
+        # Non-zero exit fails the pre-merge check. The authoritative promotion verdict is
+        # Hrz4's, taken with --mode gate outside this workflow.
+        run: python eval/run_eval.py --mode smoke
