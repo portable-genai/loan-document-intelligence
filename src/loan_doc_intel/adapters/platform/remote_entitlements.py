@@ -7,7 +7,7 @@ entitlements / ACL service rather than a per-repo store. This adapter implements
 * ``owner`` -> ``GET /v1/objects/{object_id}/owner`` (``200`` -> owner record,
   ``404`` -> ``None`` -> denied fail-closed by the domain gate)
 
-The base URL is read from ``HRZ_ENTITLEMENTS_URL`` with a localhost default. A transport
+The base URL is read from ``ENTITLEMENTS_URL`` with a localhost default. A transport
 failure or an unexpected status is raised (never silently treated as ``None``): an ACL the
 service cannot resolve must not become an implicit allow.
 """
@@ -35,7 +35,7 @@ class RemoteEntitlementsAdapter:
     def __init__(self, settings: object) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("HRZ_ENTITLEMENTS_URL", _DEFAULT_URL), service="entitlements service"
+            setting_or_default("ENTITLEMENTS_URL", _DEFAULT_URL), service="entitlements service"
         )
 
     def owner(self, object_id: str) -> ObjectOwner | None:

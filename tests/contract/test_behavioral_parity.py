@@ -65,8 +65,8 @@ BENIGN_TEXT = "Summarise the applicant's April payslip net pay and bank salary c
 
 # The platform clients' localhost defaults (SPEC contract): mocked, never actually served.
 # These MUST match the env-var defaults hard-coded in the remote_* adapters.
-HRZ_GUARDRAIL = "http://localhost:8080"  # remote_guardrail / remote_redaction (HRZ_GUARDRAIL_URL)
-HRZ_OBSERVABILITY = "http://localhost:8085"  # remote_audit (HRZ_OBSERVABILITY_URL)
+GUARDRAIL_GATEWAY = "http://localhost:8080"  # remote_guardrail / remote_redaction
+OBSERVABILITY = "http://localhost:8085"  # remote_audit (OBSERVABILITY_URL)
 
 
 def _settings(profile: str) -> Settings:
@@ -89,7 +89,7 @@ def test_redaction_parity_same_request_every_implementation():
     with respx.mock:
         # The Hrz1 gateway is DLP-backed; serve its documented /v1/redact answer for the
         # same request (info-type masks), matching what the local regex adapter produced.
-        respx.post(f"{HRZ_GUARDRAIL}/v1/redact").respond(
+        respx.post(f"{GUARDRAIL_GATEWAY}/v1/redact").respond(
             200,
             json={
                 "text": (
@@ -127,7 +127,7 @@ def test_guardrail_parity_same_verdict_every_implementation(text: str, should_al
     }
 
     with respx.mock:
-        respx.post(f"{HRZ_GUARDRAIL}/v1/guardrail/screen").respond(
+        respx.post(f"{GUARDRAIL_GATEWAY}/v1/guardrail/screen").respond(
             200,
             json={
                 "allowed": should_allow,
@@ -189,7 +189,7 @@ def test_audit_parity_identical_payload_at_every_sink():
 
     # platform sink (Hrz5 observability): the POSTed body is byte-identical to what local stored.
     with respx.mock:
-        route = respx.post(f"{HRZ_OBSERVABILITY}/v1/audit").respond(202)
+        route = respx.post(f"{OBSERVABILITY}/v1/audit").respond(202)
         _adapter("audit", "platform").record(event)
         posted = json.loads(route.calls.last.request.content)
     assert posted == expected, "platform sink received a different record than local stored"

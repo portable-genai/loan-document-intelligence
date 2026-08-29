@@ -2,8 +2,8 @@
 
 The ``platform`` profile's adapters are thin HTTP clients to the sibling
 horizontal-platform and de-risking services. Base URLs must be ``https://`` outside
-loopback (caught at adapter construction); when ``HRZ_S2S_TOKEN`` is set every request
-carries it as an ``Authorization: Bearer`` header, and ``HRZ_S2S_SIGNING_KEY``
+loopback (caught at adapter construction); when ``S2S_TOKEN`` is set every request
+carries it as an ``Authorization: Bearer`` header, and ``S2S_SIGNING_KEY``
 optionally propagates a verified end-user actor as an HMAC-signed ``X-Ld-Actor`` /
 ``X-Ld-Actor-Sig`` pair.
 
@@ -17,9 +17,9 @@ from __future__ import annotations
 from hex_service_kit.s2s import client_headers, validate_base_url
 
 #: Env var holding the bearer credential for S2S calls (empty = no header attached).
-TOKEN_ENV = "HRZ_S2S_TOKEN"
+TOKEN_ENV = "S2S_TOKEN"
 #: Env var holding the HMAC key for signing the propagated end-user actor.
-SIGNING_KEY_ENV = "HRZ_S2S_SIGNING_KEY"
+SIGNING_KEY_ENV = "S2S_SIGNING_KEY"
 _ACTOR_HEADER = "X-Ld-Actor"
 _ACTOR_SIG_HEADER = "X-Ld-Actor-Sig"
 
