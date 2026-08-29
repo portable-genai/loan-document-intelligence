@@ -112,15 +112,15 @@ from the request identity (a Cloud IAP assertion in secure mode, a seeded person
 
 ### Cross-repo services Doc5 CONSUMES
 
-- **Hrz1 guardrail** (`HRZ_GUARDRAIL_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
-- **Hrz3 registry** (`HRZ_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`.
-- **Hrz4 AI quality** (`HRZ_QUALITY_URL`): `POST /v1/evaluations {target, dataset_id, bundle}`
+- **Hrz1 guardrail** (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
+- **Hrz3 registry** (`AGENT_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`.
+- **Hrz4 AI quality** (`QUALITY_GATE_URL`): `POST /v1/evaluations {target, dataset_id, bundle}`
   (report parsed from `results[]`, not `metrics[]`) and `POST /v1/gate {target, dataset_id,
   bundle}` -> `{passed}`. `target` is structured (`{model, prompt_version, dataset_id, system}`)
   and its `dataset_id` must mirror the top-level one (Hrz4 422s on divergence). Metrics are
   selected server-side by the registered `bundle` name (`doc5-loan-document-intelligence`), so the client
   never sends bare metric names.
-- **Hrz5 observability** (`HRZ_OBSERVABILITY_URL`): `POST /v1/audit`.
+- **Hrz5 observability** (`OBSERVABILITY_URL`): `POST /v1/audit`.
 
 ## 7. Ports and adapters
 

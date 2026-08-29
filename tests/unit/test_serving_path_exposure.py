@@ -8,7 +8,7 @@ groups and tenant included, to any peer that could reach the port, and a LAN pee
 act as the loan approver by naming that persona in a header.
 
 The second half is WHAT the guard is derived from. It must not be a service credential:
-``HRZ_S2S_TOKEN`` authenticates a calling SERVICE and no end user, so setting one is not
+``S2S_TOKEN`` authenticates a calling SERVICE and no end user, so setting one is not
 evidence that ``/v1/personas`` is protected; a guard derived from it switches OFF for exactly
 the end-user routes it was protecting. The guard therefore reads the identity BINDING
 (``ports/identity.py``), and the token cells below are the standing proof of that.
@@ -34,7 +34,7 @@ LOOPBACK_PEER = "127.0.0.1"
 
 _ENV = (
     "LOAN_DOC_PROFILE",
-    "HRZ_S2S_TOKEN",
+    "S2S_TOKEN",
     "LOAN_DOC_ALLOW_INSECURE_DEMO",
     "LOAN_DOC_IAP_AUDIENCE",
 )
@@ -78,10 +78,10 @@ UNCREDENTIALED_ROUTES = ("/healthz", "/v1/personas", "/.well-known/agent-card.js
     [
         # The cell this file was written for: an ordinary deployment shape, not a
         # misconfiguration. Setting a service credential must not unbound the end-user routes.
-        ("local chosen, S2S token SET", {"LOAN_DOC_PROFILE": "local", "HRZ_S2S_TOKEN": "s3cret"}),
+        ("local chosen, S2S token SET", {"LOAN_DOC_PROFILE": "local", "S2S_TOKEN": "s3cret"}),
         ("local chosen, no token", {"LOAN_DOC_PROFILE": "local"}),
         # Unset is not consent: no profile means no identity scheme was chosen at all.
-        ("profile UNSET, token SET", {"HRZ_S2S_TOKEN": "s3cret"}),
+        ("profile UNSET, token SET", {"S2S_TOKEN": "s3cret"}),
         # The on-premises placeholder resolves nobody until a client binds their own IdP.
         ("onprem placeholder binding", {"LOAN_DOC_PROFILE": "onprem"}),
     ],
@@ -129,7 +129,7 @@ def test_a_verifying_binding_stands_the_guard_down(monkeypatch: pytest.MonkeyPat
         monkeypatch,
         LOAN_DOC_PROFILE="gcp",
         LOAN_DOC_IAP_AUDIENCE="/projects/000/global/backendServices/000",
-        HRZ_S2S_TOKEN="s3cret",
+        S2S_TOKEN="s3cret",
     )
     assert _status(app, "/healthz", LAN_PEER) == 200
 
