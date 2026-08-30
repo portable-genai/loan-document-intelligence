@@ -50,6 +50,10 @@ def _build_catalog() -> dict[str, ToolSpec]:
                 "properties": {
                     "application_id": {"type": "string"},
                     "documents": {"type": "array", "items": _DOCUMENT_SCHEMA},
+                    "applicant_name": {
+                        "type": "string",
+                        "description": "The applicant's name, for name-match context. Optional.",
+                    },
                 },
                 "required": ["application_id", "documents"],
                 "additionalProperties": False,
@@ -71,22 +75,37 @@ def _build_catalog() -> dict[str, ToolSpec]:
         "cross_validate": ToolSpec(
             name="cross_validate",
             description=(
-                "Run the deterministic consistency checks across an applicant's document "
-                "extracts (salary-credit match, name/address, balance trend, affordability)."
+                "Describe the deterministic consistency checks B5 applies to an application "
+                "(salary-credit match, income consistency, name/address, balance trend, "
+                "affordability). This names the checks; process_application RUNS them."
             ),
-            # This declared ``extract_ids`` until 2026-08-28, and nothing in this service can
-            # resolve an extract id: ``CrossValidator.validate`` takes ``DocumentExtract``
-            # objects and no port maps an id to one. The declaration was written and never
-            # served, so nothing had checked it. Narrowed to the documents the checks actually
-            # run over, which is the shape ``process_application`` already uses, rather than
-            # inventing a store for ids that were never minted.
+            # Narrowed twice, and the second time is the one that matters.
+            #
+            # It declared ``extract_ids`` until 2026-08-28, and nothing here resolves an
+            # extract id: ``CrossValidator.validate`` takes ``DocumentExtract`` objects and no
+            # port maps an id to one. That narrowing replaced the ids with ``documents``, on
+            # the reasoning that documents are what the checks run over -- true of the CHECKS,
+            # and not true of this TOOL. ``agent.tools.cross_validate`` takes
+            # ``(application_id, applicant_name)`` and returns the governed check catalog; it
+            # accepts no documents and reads none. So the declaration still asked for a field
+            # the callable would have ignored, and still promised a run it does not perform.
+            #
+            # The declaration follows the service (org decision, 2026-08-30): the inputs are
+            # the callable's own, and the description says describe rather than run. The
+            # alternative -- making the callable validate the documents -- would duplicate
+            # ``process_application``, which is the tool that already does it.
+            # ``tests/unit/test_mcp_catalog_is_performable.py`` pins the correspondence now, so
+            # a third narrowing cannot be needed for the same reason.
             input_schema={
                 "type": "object",
                 "properties": {
                     "application_id": {"type": "string"},
-                    "documents": {"type": "array", "items": _DOCUMENT_SCHEMA},
+                    "applicant_name": {
+                        "type": "string",
+                        "description": "The applicant's name, for context only. Optional.",
+                    },
                 },
-                "required": ["application_id", "documents"],
+                "required": ["application_id"],
                 "additionalProperties": False,
             },
         ),
