@@ -34,10 +34,10 @@ _B5_SKILLS: tuple[AgentSkill, ...] = (
     ),
     AgentSkill(
         id="cross_validate",
-        name="Cross-validate documents",
+        name="Describe the cross-validation checks",
         description=(
-            "Run the deterministic consistency checks across an applicant's extracts "
-            "(salary-credit match, name/address, balance trend, affordability)."
+            "Name the deterministic consistency checks B5 applies (salary-credit match, "
+            "name/address, balance trend, affordability). process_application runs them."
         ),
     ),
 )
