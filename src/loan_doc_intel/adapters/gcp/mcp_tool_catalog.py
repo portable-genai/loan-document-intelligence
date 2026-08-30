@@ -115,7 +115,7 @@ class McpToolCatalogAdapter:
             mcp_types.Tool(
                 name=spec.name,
                 description=spec.description,
-                inputSchema=spec.input_schema,
+                input_schema=spec.input_schema,
             )
             for spec in self._catalog.values()
         ]
