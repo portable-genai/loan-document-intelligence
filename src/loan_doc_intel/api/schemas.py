@@ -253,6 +253,10 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     profile: str = "local"
     region: str = "asia-southeast1"
+    #: Provenance the UI banner states on every page: where the runtime sits and which model
+    #: answers. Both are read off the service because the browser cannot know either.
+    runtime: str = "local"  # "gcp" | "local"
+    generator_model: str = "deterministic-offline-stub"
 
 
 class AgentSkillModel(BaseModel):
