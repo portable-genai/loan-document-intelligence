@@ -38,7 +38,7 @@ open an issue first and make the case : do not bundle a contract change into a f
 - **Deterministic verdicts:** the `CrossValidator` owns every check outcome; the LLM may
   explain a check but must never change its status.
 - **Region pinned** to `asia-southeast1`. **Models pinned** to `gemini-3.5-flash` /
-  `gemini-3.1-flash-lite`. Never use the floating ADK default model or `gemini-2.0-flash`.
+  `gemini-3.5-flash`. Never use the floating ADK default model or `gemini-2.0-flash`.
 - **No secrets in code.** Use env vars / `settings.yaml` interpolation.
 - Use current product names in docstrings: "Gemini Enterprise Agent Platform", "Document AI",
   "Agent Runtime".
