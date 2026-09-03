@@ -83,8 +83,8 @@ by default (`-m 'not integration'`). Do not make the default suite depend on clo
 4. If you touch a compliance-relevant path, update [`COMPLIANCE.md`](COMPLIANCE.md) so the
    principle-to-control mapping stays accurate.
 5. CI runs ruff + mypy + `pytest -m 'not integration'` on the `onprem` profile
-   (the hosted Cloud Build check) and the eval gate
-   (the hosted Cloud Build check). Both must pass.
+   (the hosted GitHub Actions check) and the eval gate
+   (the hosted GitHub Actions check). Both must pass.
 
 ### Commit / DCO
 - Write clear, imperative commit messages.
