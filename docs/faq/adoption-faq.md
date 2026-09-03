@@ -67,7 +67,7 @@ compliance function must own.
 Partly guarded today. `make demo` runs the offline batch render in one command, but there is
 **no CI demo self-test** and no stable `data-*` panel hooks yet, so a refactor can drift the
 demo without failing a build (audit checks **F1 / F2**). If you rely on the demo for
-stakeholder reviews, wire a self-test into the hosted Cloud Build check as an early fork step.
+stakeholder reviews, wire a self-test into the hosted GitHub Actions check as an early fork step.
 
 ### Does the CI run for my fork out of the box?
 
