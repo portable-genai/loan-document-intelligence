@@ -1,7 +1,7 @@
 """Generation port : LLM normalisation / reconciliation / explanation.
 
 Primary GCP adapter: Gemini models on the Gemini Enterprise Agent Platform
-(``gemini-3.5-flash`` for reasoning, ``gemini-3.1-flash-lite`` for triage). The LLM
+(``gemini-3.5-flash`` for reasoning, ``gemini-3.5-flash`` for triage). The LLM
 normalises extracted fields into ``IncomeFigure`` records, summarises and explains
 discrepancies in prose. It NEVER overrides the deterministic cross-validation verdicts :
 that authority belongs to the ``CrossValidator``.

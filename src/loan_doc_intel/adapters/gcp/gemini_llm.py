@@ -3,7 +3,7 @@
 Wraps the unified **Google GenAI SDK** (``google-genai``) against the **Gemini Enterprise
 Agent Platform** (Vertex backend) in ``asia-southeast1`` (Singapore). Reasoning uses
 ``gemini-3.5-flash`` (thinking=high) and triage/classification uses
-``gemini-3.1-flash-lite`` : both pinned from settings; the floating ADK default model and
+``gemini-3.5-flash`` : both pinned from settings; the floating ADK default model and
 ``gemini-2.0-flash`` are never used.
 
 In B5 the model normalises extracted fields into income figures and explains
