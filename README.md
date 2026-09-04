@@ -1,4 +1,4 @@
-# Doc5 · Loan / Mortgage Document Intelligence (`loan_doc_intel`)
+# `loan-document-intelligence` · Loan / Mortgage Document Intelligence (`loan_doc_intel`)
 
 **Industries:** Banking (retail lending), Mortgage lending, Real estate, Fintech / lending, Insurance
 
@@ -16,7 +16,7 @@ Built ports-and-adapters on the **Gemini Enterprise Agent Platform** (region
 `asia-southeast1`, Singapore), with an offline test+lint gate that runs with **no Google
 Cloud SDK installed** : the proof of the no-vendor-lock-in promise.
 
-- Catalog identity: **Doc5**, group `doc`, priority **P2**, buyer **Retail Lending**.
+- Catalog identity: `loan-document-intelligence`, group `doc`, priority **P2**, buyer **Retail Lending**.
 - Service port default: **8092**. Python package: `loan_doc_intel`.
 
 ## What it produces
@@ -74,7 +74,7 @@ flowchart LR
   subgraph Adapters
     GCP["gcp: Document AI, Gemini, Model Armor, DLP, Cloud Logging, Cloud Trace"]
     LOC["local: SDK-free offline stack (parser, deterministic LLM, SQLite audit)"]
-    PLAT["platform: Hrz1, Hrz3, Hrz4, Hrz5 HTTP clients"]
+    PLAT["platform: `agent-guardrail-gateway`, `agent-registry`, `model-quality-gate`, `agent-observability` HTTP clients"]
     ONP["onprem: SDK-free placeholders"]
   end
   API --> SVC
@@ -146,11 +146,11 @@ guide: [`docs/embedding-and-identity.md`](docs/embedding-and-identity.md).
 
 ## Dependencies (catalog matrix)
 
-Doc5 consumes the shared platform services: **Hrz1** Guardrail (R1), **Hrz3** Registry (R4),
-**Hrz4** AI Quality eval gate at promotion (R5), **Hrz5** Observability/Audit (R2), and
-**Hrz7** Human Review for maker-checker routing. It is
-validated by **Rsk3** at intake (R6). It does document extraction + deterministic
-validation, **not** RAG over a corpus, so **R3 / Hrz2 is N/A**.
+`loan-document-intelligence` consumes the shared platform services: `agent-guardrail-gateway` (R1), `agent-registry` (R4),
+`model-quality-gate` AI Quality eval gate at promotion (R5), `agent-observability` (R2), and
+`human-review-console` Human Review for maker-checker routing. It is
+validated by `architecture-validator` at intake (R6). It does document extraction + deterministic
+validation, **not** RAG over a corpus, so **R3 / `enterprise-knowledge-base` is N/A**.
 
 ## Profiles
 
@@ -158,7 +158,7 @@ validation, **not** RAG over a corpus, so **R3 / Hrz2 is N/A**.
 | --- | --- |
 | `local` (set `LOAN_DOC_PROFILE=local` deliberately; dev / test / CI) | A WORKING offline stack: local document parser, deterministic LLM, regex DLP, heuristic guardrail, append-only SQLite audit, in-process session/memory/registry. SDK-free; runs the whole pipeline on a laptop. Tests and CI run here. With the variable unset the same adapters bind, but as an unconsented run: no seeded personas and no localhost CORS grant. |
 | `gcp` (production sets `LOAN_DOC_PROFILE=gcp` explicitly) | Document AI, Gemini, Model Armor, DLP, Cloud Logging WORM, Cloud Trace, Gen AI eval. |
-| `platform` | HTTP clients to Hrz1 / Hrz3 / Hrz4 / Hrz5 (the rest fall back to `gcp`). |
+| `platform` | HTTP clients to `agent-guardrail-gateway` / `agent-registry` / `model-quality-gate` / `agent-observability` (the rest fall back to `gcp`). |
 | `onprem` | SDK-free fail-fast placeholder adapters (the Google Distributed Cloud migration target): every method raises a clean exit-code-2 error. |
 
 ## Layout
@@ -178,13 +178,13 @@ ui/                       React/Next.js (source only)
 ## Compliance
 
 See `COMPLIANCE.md` for the mapping of General Principles P-01..P-12 and rules R1..R6 to
-concrete controls in this repo. Doc5 stresses **P-04** (redact applicant PII before
+concrete controls in this repo. `loan-document-intelligence` stresses **P-04** (redact applicant PII before
 model/audit), **P-06** (maker-checker: the underwriter decides), and **P-07** (every
 figure cited to a source document + WORM audit). Synthetic applicant data is fictional.
 
 ## Cost and latency
 
-Size this system's cost and latency with the shared interactive calculator: [**live**](https://portable-genai.github.io/cost-latency-calculator/calc/calculator.html?system=Doc5) or the [in-repo page](cost-latency-calculator.html). The engine and the pricing book are maintained once in [cost-latency-calculator](https://github.com/portable-genai/cost-latency-calculator).
+Size this system's cost and latency with the shared interactive calculator: [**live**](https://portable-genai.github.io/cost-latency-calculator/calc/calculator.html?system=loan-document-intelligence) or the [in-repo page](cost-latency-calculator.html). The engine and the pricing book are maintained once in [cost-latency-calculator](https://github.com/portable-genai/cost-latency-calculator).
 
 ## License
 

@@ -54,7 +54,7 @@ The `onprem` adapters are deliberate fail-fast placeholders (they raise
 `Settings` arg, so the *interface contract* for a sovereign migration is proven and enforced
 by CI today. The actual on-prem implementations are the migration work, scoped in
 [`docs/onprem-migration.md`](../onprem-migration.md) (Google Distributed Cloud, zero domain
-changes). This repo is not the sovereign-exit *planner*, that is the sibling **Rsk5 Exit &
+changes). This repo is not the sovereign-exit *planner*, that is the sibling **the exit-and-portability planner Exit &
 Portability Planner**; this repo is one of the systems whose exit that planner reasons about.
 
 ### Does the kernel/vertical split affect portability?
@@ -72,8 +72,8 @@ itself for now.
 No: residency is a deploy-time pin (region `asia-southeast1` / Singapore, CMEK, VPC-SC),
 and portability is the ability to change *where* the stack runs by configuration. They are
 orthogonal, and the region is validated to fail fast. The residency-violation CI gate is the
-sibling **Rsk4 Data Residency / Sovereignty Validator**; the exit / concentration-risk plan
-is **Rsk5**. This repo enforces residency in its own infra and is one of the systems those
+sibling **the data-residency validator Data Residency / Sovereignty Validator**; the exit / concentration-risk plan
+is **the exit-and-portability planner**. This repo enforces residency in its own infra and is one of the systems those
 tools reason about. See [compliance-faq.md](compliance-faq.md) for the residency controls.
 
 ### What is NOT yet portable / proven?

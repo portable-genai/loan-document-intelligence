@@ -134,7 +134,7 @@ actor), `principals` (entitlement groups/ACL), `tenant` (multi-tenant partition)
 ### Defense-in-depth PEP
 
 1. **Edge** (Cloud IAP / Apigee) authenticates and gates at ingress.
-2. **Hrz1 guardrail** applies central policy.
+2. **`agent-guardrail-gateway`** applies central policy.
 3. **This backend re-validates** the assertion and **derives identity itself** (`api/security.py`
    plus the active adapter).
 

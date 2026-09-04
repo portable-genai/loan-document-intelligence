@@ -1,14 +1,14 @@
 # Common-base practices audit
 
 - **Repo:** `loan-document-intelligence`
-- **Catalog id:** Doc5 (package `loan_doc_intel`, env prefix `LOAN_DOC`)
+- **Catalog id:** `loan-document-intelligence` (package `loan_doc_intel`, env prefix `LOAN_DOC`)
 - **Catalogue reference:** [`common-base-practices.md`](https://github.com/portable-genai/.github/blob/main/common-base-practices.md) (checks A1..G7)
 - **Authoritative source:** reconciled to the maintainer's cross-repository audit matrix, authoritative on verdicts.
 - **Note:** Every check was re-run against the current tree (greps executed, files opened), with the
   reference repo's package/env names (`cdd_sow_research`/`CDD`) substituted for this repo's
   (`loan_doc_intel`/`LOAN_DOC`). Verdicts reflect what is in the tree today, not intent.
 
-Applicability: Doc5 ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
+Applicability: `loan-document-intelligence` ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
 `[infra]` checks apply. It delegates identity to Cloud IAP and owns no login flow, so the
 `[ui]` login-hardening check `C8` is N-A. **Load-bearing** checks (a FAIL breaks a shared
 catalog guarantee) are A1-A6, C1-C5, D1-D3 and E1.
@@ -43,7 +43,7 @@ catalog guarantee) are A1-A6, C1-C5, D1-D3 and E1.
 | **D3** Whole gate runs offline, zero org secrets `[all]` **(load-bearing)** | PASS | `ci.yaml` + `eval-gate.yaml` set `LOAN_DOC_PROFILE: local`, reference no `secrets.*`, and run ruff check + ruff format --check + mypy + pytest (integration deselected) + e2e smoke + `python eval/run_eval.py`. |
 | **D4** Non-root, minimal, healthchecked container `[infra]` | PASS | Multi-stage `Dockerfile`: `USER appuser` (uid 10001), `HEALTHCHECK` on `/healthz`, `EXPOSE 8092`, `LOAN_DOC_PROFILE=gcp` in the image; the runtime stage copies only the venv (no build toolchain). |
 | **D5** Deploy-time residency/sovereignty, parameterised `[infra]` | PASS | Terraform pins and validates Singapore, digest-pins the API image, binds CMEK to Cloud Run and the audit bucket, applies resource-location/no-SA-key Org Policy, starts VPC-SC in explicit dry-run, alerts on guardrail/key/perimeter/CMEK signals and runs fmt/validate in CI. `production_mode` rejects a partial posture; disposable demos keep irreversible lock and deletion protection explicit. Live enforcement is still unproved and externally blocked: it needs a `terraform apply` against a NAMED GCP project, plus the resulting evidence (the Org Policy constraints in force, the CMEK key bindings, and the VPC-SC perimeter moved out of dry-run). No code change can supply that. |
-| **E1** Offline eval smoke guards merge; Hrz4 owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py` has the `--mode smoke|gate` split via the shared `agent-eval-kit` scaffold; `remote_evaluation.py` re-based on the shared `PromotionGateClient` (registered bundle `doc5-loan-document-intelligence` unchanged); gate mode refuses to run outside `LOAN_DOC_PROFILE=platform|gcp`. The two-part pii-kit eval scorer is untouched. |
+| **E1** Offline eval smoke guards merge; `model-quality-gate` owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py` has the `--mode smoke|gate` split via the shared `agent-eval-kit` scaffold; `remote_evaluation.py` re-based on the shared `PromotionGateClient` (registered bundle `doc5-loan-document-intelligence` unchanged); gate mode refuses to run outside `LOAN_DOC_PROFILE=platform|gcp`. The two-part pii-kit eval scorer is untouched. |
 | **E2** Safety metric with strictest threshold, no false green `[agentic]` | PASS | `pii_safety >= 0.99` runs the REAL `LocalRegexRedactionAdapter`, not a `FakeRedactionAdapter` with its own copy of the three regexes, so the gate cannot drift from the shipped redactor, and is scored TWO ways: off the shared pack (catches PII the pipeline re-introduced) and off each case's own planted identifier, pack-independently (catches the pack itself being wrong, which the pack scan is blind to by construction, since a row that fails to match cannot detect what it failed to mask). Verified by execution: break one market's row with the market still configured and the pack scan alone reports NO leak while the raw identifier sits verbatim in the audit record; only the literal check fires. A market missing from the config raises rather than scoring a vacuous 1.0. Four per-market golden cases (`case-pii-sg\|hk\|jp\|au`) carry their own jurisdiction's identifier, so a broken row reddens exactly one case. Both redaction call sites are covered: the audited prompt and the extracts the model reads. |
 | **E3** Fixtures and golden data obviously fictional `[all]` | PASS | `eval/datasets/golden_cases.jsonl` uses "Casey Fictional", "1 Test Lane, Singapore 000001", `gs://fictional/...` and states "All applicant data is fictional"; DEMO.md drives synthetic applications. |
 | **F1** Demo is code, offline, one command, presenter-paced `[all]` | PASS | `make demo-ui` starts the real local service, opens the headed browser, supports list/resume/screenshots and cleans up both processes. `scripts/run_ui_demo.py` owns lifecycle and forwards walkthrough options; `make demo` remains the separate static audit-view render. |
@@ -53,7 +53,7 @@ catalog guarantee) are A1-A6, C1-C5, D1-D3 and E1.
 | **G2** Compliance mapping table + adopter-owned crosswalk `[all]` | PASS | COMPLIANCE now includes an explicitly adopter-owned responsible-lending/MAS crosswalk with applicability, owner and evidence fields. |
 | **G3** Documented, mechanised fork path `[all]` | PASS | `docs/ADOPTING.md` documents the explicit `domain/kernel.py` boundary, the core-vs-adopter-owned file list, the one-pass rebrand and the human-decision checklist; `scripts/rename_fork.py` mechanises the rename (package `loan_doc_intel`, CLI/dist/resource stem `loan-document-intelligence`, env prefix `LOAN_DOC_`, `--dist` defaulting to `--resource`). Dry-run verified: exit 0, plan of 64 files / 344 replacements, writes nothing (`git` stays clean). |
 | **G4** Retired `[all]` | N-A (retired) | Retired practice. Releases are tracked by git tag and the `pyproject.toml` version. |
-| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` ships a README index plus five role FAQs (security, portability, features, adoption, compliance); each names the owning catalog id for the adjacent concern (Hrz1 guardrail, Hrz4 eval gate, Hrz5 WORM audit, Hrz7 review console, Rsk2/Rsk3/Rsk4/Rsk5/Rsk6) and marks the Hrz2 governed-RAG dependency N/A, pointing at the boundary rather than duplicating it. |
+| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` ships a README index plus five role FAQs (security, portability, features, adoption, compliance); each names the owning catalog id for the adjacent concern (`agent-guardrail-gateway`, `model-quality-gate`, `agent-observability`, `human-review-console`, the cloud control-mapping toolkit/`architecture-validator`/the data-residency validator/the exit-and-portability planner/`onprem-dlp`) and marks the `enterprise-knowledge-base` governed-RAG dependency N/A, pointing at the boundary rather than duplicating it. |
 | **G6** Contribution docs cover full extension touch list `[all]` | PASS | CONTRIBUTING lists adapter and sub-service touch points and names the enforcing parity test. |
 | **G7** Markdown discipline: minimise em-dashes, validate mermaid `[all]` | PASS (minor drift) | Core docs (README, SPEC, ARCHITECTURE, COMPLIANCE, CONTRIBUTING) and `docs/*.md` are at 0 em-dashes (the repo uses " : " spaced colons); only DEMO.md carries 4. Convention is "minimise", non-load-bearing. |
 
@@ -68,7 +68,7 @@ Load-bearing (A1-A6, C1-C5, D1-D3, E1): all 15 PASS, **0 PARTIAL, 0 FAIL**.
 
 ## Gaps carried to systems/
 
-The Doc5 row of the maintainer's per-system register
+The `loan-document-intelligence` row of the maintainer's per-system register
 records the gaps below. The load-bearing ones (they break a shared catalog guarantee) are
 marked.
 

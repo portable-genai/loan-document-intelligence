@@ -1,12 +1,13 @@
 """Shared conversion from an escalated loan case to an ``review-kit`` Review payload.
 
-Lives in the adapter layer (not the pure domain) because it depends on the kit. Redacts the
-subject descriptor, the summary and every citation snippet before they leave the process (R1 /
-P-04 boundary), using the SAME jurisdiction pattern set the redaction adapter uses
-(``domain/pii_patterns.patterns_for``), so no raw applicant identifier reaches Hrz7 over the wire;
-Hrz7 redacts again before its own audit write (defense in depth). The maker (the underwriter /
-service identity that originated the case) and the tenant are asserted here and trusted by Hrz7
-because this is an authenticated S2S caller (per-hop OBO is the deferred next layer).
+Lives in the adapter layer (not the pure domain) because it depends on the kit. Redacts the subject
+descriptor, the summary and every citation snippet before they leave the process (R1 / P-04
+boundary), using the SAME jurisdiction pattern set the redaction adapter uses
+(``domain/pii_patterns.patterns_for``), so no raw applicant identifier reaches human-review-console
+over the wire; human-review-console redacts again before its own audit write (defense in depth). The
+maker (the underwriter / service identity that originated the case) and the tenant are asserted here
+and trusted by human-review-console because this is an authenticated S2S caller (per-hop OBO is the
+deferred next layer).
 
 ``LoanApplicationCase`` carries no tenant field, so the tenant is passed in by the service from the
 verified principal rather than read off the artifact.
@@ -93,7 +94,9 @@ def _kit_citations(case: LoanApplicationCase) -> tuple[KitCitation, ...]:
 
 
 def case_to_review(case: LoanApplicationCase, *, maker: str, tenant: str = "") -> Review:
-    """Build the review a producer submits to Hrz7 when a loan case escalates (rule R8)."""
+    """Build the review a producer submits to human-review-console when a loan case escalates (rule
+    R8).
+    """
     income = case.income
     validation = case.validation
     verdict = income.verdict if income is not None else VerificationVerdict.NEEDS_REVIEW

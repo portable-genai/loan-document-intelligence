@@ -1,4 +1,4 @@
-# Contributing to Doc5 : Loan / Mortgage Document Intelligence
+# Contributing to `loan-document-intelligence` : Loan / Mortgage Document Intelligence
 
 Thanks for your interest. This is a public Apache-2.0 reference build. Contributions that
 improve correctness, clarity, test coverage, or the documentation are welcome.
@@ -66,7 +66,7 @@ Contract tests assert interface parity; unit tests use in-memory fakes.
 make fmt        # ruff format + ruff --fix
 make lint       # ruff check + mypy
 make test       # LOAN_DOC_PROFILE=onprem pytest -m 'not integration'
-make eval       # the Hrz4 eval gate (eval/run_eval.py)
+make eval       # the `model-quality-gate` (eval/run_eval.py)
 ```
 
 Tests that require live Google Cloud credentials are marked `integration` and are deselected

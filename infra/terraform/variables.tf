@@ -16,7 +16,7 @@ variable "project_id" {
 }
 
 variable "api_image" {
-  description = "Reviewed Doc5 API image pinned by sha256 digest."
+  description = "Reviewed loan-document-intelligence API image pinned by sha256 digest."
   type        = string
 
   validation {

@@ -1,9 +1,9 @@
-"""R8 routing: an escalated loan case is routed to Hrz7 via the shared review-kit.
+"""R8 routing: an escalated loan case is routed to human-review-console via the shared review-kit.
 
-Every ``LoanApplicationCase`` requires human review (the underwriter is the checker, P-06), so
-rule R8 says it MUST be handed to the Hrz7 maker-checker console rather than left as a per-repo
-boolean. These tests prove the producer half of that loop end-to-end against the offline local
-router (an in-memory outbox), and prove the redact-before-wire boundary so no raw applicant
+Every ``LoanApplicationCase`` requires human review (the underwriter is the checker, P-06), so rule
+R8 says it MUST be handed to the human-review-console maker-checker console rather than left as a
+per-repo boolean. These tests prove the producer half of that loop end-to-end against the offline
+local router (an in-memory outbox), and prove the redact-before-wire boundary so no raw applicant
 identifier reaches the console. All data here is synthetic and clearly fictional.
 """
 
@@ -65,7 +65,9 @@ def test_process_routes_case_to_outbox_once(
     assert case.requires_human_review
 
     pending = router.outbox.pending()
-    assert len(pending) == 1, "the escalated case must be routed to Hrz7 exactly once"
+    assert len(pending) == 1, (
+        "the escalated case must be routed to human-review-console exactly once"
+    )
     review = pending[0].review
     assert review.case_ref == case.id
     assert review.maker == ACTOR

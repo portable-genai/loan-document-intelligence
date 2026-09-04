@@ -1,6 +1,6 @@
-# Demo guide : Doc5 Loan / Mortgage Document Intelligence
+# Demo guide : `loan-document-intelligence` Loan / Mortgage Document Intelligence
 
-Step-by-step scripts for demoing Doc5 two ways:
+Step-by-step scripts for demoing `loan-document-intelligence` two ways:
 
 - **Demo A : Offline income verification on a laptop** (the headline flow): the service
   redacts applicant PII, extracts a payslip and a bank statement, normalises income, then
@@ -229,8 +229,8 @@ Or the browser console (talks to the API on :8092) : see [`ui/README.md`](ui/REA
 cd ui && npm install && npm run build && npm run start   # http://localhost:3000
 ```
 
-The same console accepts those two GCS URIs in its document-source fields. Through Hrz9, use
-the portal's hosted HTTPS origin and the Doc5 tab; the immutable Doc5 UI and API image digests
+The same console accepts those two GCS URIs in its document-source fields. Through `journey-portal`, use
+the portal's hosted HTTPS origin and the `loan-document-intelligence` tab; the immutable `loan-document-intelligence` UI and API image digests
 are installation inputs. A successful Terraform validation or plan is not a hosted-demo claim:
 retain Cloud Run health, profile/region, browser, artifact and audit-correlation evidence from
 the named target.
@@ -249,12 +249,12 @@ stays in `asia-southeast1` with CMEK ([README "Compliance"](README.md#compliance
   deterministic comparison with an explicit expected vs observed : reproducible and
   auditable. The LLM only normalises figures and writes prose; it can never change a verdict
   (P-06 boundary).
-- **Decision-support, not a decision.** Doc5 verifies income; the underwriter approves. Every
+- **Decision-support, not a decision.** `loan-document-intelligence` verifies income; the underwriter approves. Every
   case is `requires_human_review = True`.
 - **Audit-first output.** Income summary, the six deterministic checks, and the redacted
   extracts : each figure proven by a document-and-field citation.
 - **Guardrails hold.** Redact-before-everything (P-04), heuristic/Model-Armor guardrail on
-  input and output, WORM audit (Hrz5), single-region + CMEK residency.
+  input and output, WORM audit (`agent-observability`), single-region + CMEK residency.
 - **No vendor lock-in.** The same domain code runs offline (`local`), on the managed stack
   (`gcp`), against the shared platform (`platform`), or fails fast on the on-prem migration
   target (`onprem`) : a one-line profile change.

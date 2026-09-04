@@ -7,13 +7,13 @@ here. Read it first. This file carries only what is specific to this one.
 
 ## What this is
 
-Catalog id **Doc5**. Income and bank-statement extraction + cross-validation.
+Catalog id `loan-document-intelligence`. Income and bank-statement extraction + cross-validation.
 
 ## Concrete bindings
 
 | | |
 |---|---|
-| Catalog id | `Doc5` |
+| Catalog id | `loan-document-intelligence` |
 | Package | `src/loan_doc_intel/` |
 | Profile variable | `LOAN_DOC_PROFILE` |
 | Adapter families | `gcp`, `local`, `onprem`, `platform` |

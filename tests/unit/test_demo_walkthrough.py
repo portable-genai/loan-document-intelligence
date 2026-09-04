@@ -1,4 +1,4 @@
-"""Offline contract tests for the presenter-paced Doc5 walkthrough."""
+"""Offline contract tests for the presenter-paced loan-document-intelligence walkthrough."""
 
 from __future__ import annotations
 

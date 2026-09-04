@@ -107,7 +107,8 @@ class LoanDocService:
         self._income = income_service or IncomeVerificationService()
         self._review = review_policy or LoanReviewPolicy()
         # Optional ReviewRouterPort (rule R8): when bound, an escalated case is routed to the
-        # Hrz7 maker-checker console. Optional so the pure domain and unit tests run without it.
+        # human-review-console maker-checker console. Optional so the pure domain and unit tests run
+        # without it.
         self._review_router = review_router
 
     # ------------------------------------------------------------------ #
@@ -136,7 +137,8 @@ class LoanDocService:
         span = self._tracer.span("loan_doc.process", action="process", actor=actor)
         with span if span is not None else nullcontext():
             case = self._process_inner(application, documents, actor)
-        # Rule R8: route the escalation to the Hrz7 maker-checker console instead of leaving it a
+        # Rule R8: route the escalation to the human-review-console maker-checker console instead of
+        # leaving it a
         # per-repo boolean. After the audit (written inside the pipeline) and best-effort: a
         # routing failure must never crash the request or lose the assembled case.
         self._route_for_review(case, maker=actor, tenant=principal.tenant)
@@ -181,10 +183,10 @@ class LoanDocService:
         require_object_access(principal, object_id, owner)
 
     # ------------------------------------------------------------------ #
-    # Review routing (rule R8): hand the escalation to Hrz7, not a boolean.
+    # Review routing (rule R8): hand the escalation to human-review-console, not a boolean.
     # ------------------------------------------------------------------ #
     def _route_for_review(self, case: LoanApplicationCase, *, maker: str, tenant: str) -> None:
-        """Route a ``requires_human_review`` case to the Hrz7 console via the bound router.
+        """Route a ``requires_human_review`` case to the human-review-console via the bound router.
 
         Optional and best-effort: no router bound (pure domain / unit tests) is a no-op, and a
         routing failure is suppressed so it never crashes the request or drops the assembled case

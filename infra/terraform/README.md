@@ -1,6 +1,6 @@
-# Doc5 infrastructure (Terraform, asia-southeast1)
+# `loan-document-intelligence` infrastructure (Terraform, asia-southeast1)
 
-Concrete, Singapore-resident infrastructure for the Doc5 Loan / Mortgage Document
+Concrete, Singapore-resident infrastructure for the `loan-document-intelligence` Loan / Mortgage Document
 Intelligence service. Only `project_id`, `org_id` and a few genuinely per-tenant values are
 variables; every service identifier, location and template name is a concrete in-region
 value, so the stack is auditable and reproducible.

@@ -1,18 +1,18 @@
-# Doc5 Loan / Mortgage Document Intelligence : specification
+# `loan-document-intelligence` Loan / Mortgage Document Intelligence : specification
 
 ## 1. Purpose and scope
 
-Doc5 is a document-intelligence agent for retail-lending underwriting. It extracts income and
+`loan-document-intelligence` is a document-intelligence agent for retail-lending underwriting. It extracts income and
 bank-statement data from an applicant's documents (Document AI) and runs deterministic
 cross-validation across them, producing a cited, audited, maker-checker-gated income
 verification. It is **decision-support for underwriting, not a lending decision**: the agent
 verifies, the underwriter decides (P-06).
 
-Doc5 handles applicant PII (income, bank data), so the full **R1** redaction + guardrail
+`loan-document-intelligence` handles applicant PII (income, bank data), so the full **R1** redaction + guardrail
 pipeline applies. It does document extraction + deterministic validation, **not** RAG over a
-corpus, so **R3 / Hrz2 is N/A**.
+corpus, so **R3 / `enterprise-knowledge-base` is N/A**.
 
-- Catalog identity: Doc5, group `doc`, priority P2, buyer Retail Lending. Service port 8092.
+- Catalog identity: `loan-document-intelligence`, group `doc`, priority P2, buyer Retail Lending. Service port 8092.
 - Python package: `loan_doc_intel`. Profile env var: `LOAN_DOC_PROFILE`
   (gcp | local | platform | onprem).
 
@@ -37,7 +37,7 @@ Cloud, no API key and no emulator. The backends are:
 | PII redaction | Sensitive Data Protection / DLP | regex de-identification driven by the jurisdiction PII pack (SG/HK/JP/AU national ids + email / phone / account) |
 | Audit | Cloud Logging WORM bucket | append-only SQLite (or `:memory:`) store |
 | Tracer | Cloud Trace | no-op spans |
-| Session / memory / registry / tool catalog | Agent Platform / Hrz3 | in-process stores |
+| Session / memory / registry / tool catalog | Agent Platform / `agent-registry` | in-process stores |
 | Agent runtime | Agent Runtime | in-process `LoanDocService` |
 | Eval gate | Gen AI evaluation service | the in-repo offline `eval/run_eval.py` |
 
@@ -110,17 +110,17 @@ from the request identity (a Cloud IAP assertion in secure mode, a seeded person
   provider, skills:[{id,name,description}]}`. Skills: process_application, extract_document,
   cross_validate.
 
-### Cross-repo services Doc5 CONSUMES
+### Cross-repo services `loan-document-intelligence` CONSUMES
 
-- **Hrz1 guardrail** (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
-- **Hrz3 registry** (`AGENT_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`.
-- **Hrz4 AI quality** (`QUALITY_GATE_URL`): `POST /v1/evaluations {target, dataset_id, bundle}`
+- **`agent-guardrail-gateway`** (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen`, `POST /v1/redact`.
+- **`agent-registry`** (`AGENT_REGISTRY_URL`): `POST /v1/agents`, `GET /v1/agents/{name}`.
+- **`model-quality-gate` AI quality** (`QUALITY_GATE_URL`): `POST /v1/evaluations {target, dataset_id, bundle}`
   (report parsed from `results[]`, not `metrics[]`) and `POST /v1/gate {target, dataset_id,
   bundle}` -> `{passed}`. `target` is structured (`{model, prompt_version, dataset_id, system}`)
-  and its `dataset_id` must mirror the top-level one (Hrz4 422s on divergence). Metrics are
+  and its `dataset_id` must mirror the top-level one (`model-quality-gate` 422s on divergence). Metrics are
   selected server-side by the registered `bundle` name (`doc5-loan-document-intelligence`), so the client
   never sends bare metric names.
-- **Hrz5 observability** (`OBSERVABILITY_URL`): `POST /v1/audit`.
+- **`agent-observability`** (`OBSERVABILITY_URL`): `POST /v1/audit`.
 
 ## 7. Ports and adapters
 
@@ -128,19 +128,19 @@ from the request identity (a Cloud IAP assertion in secure mode, a seeded person
 | --- | --- | --- | --- | --- |
 | DocumentExtractionPort | Document AI | local parser + canned-extract store | n/a | placeholder |
 | LLMPort | Gemini | deterministic schema-driven generator | n/a | placeholder |
-| GuardrailPort | Model Armor | heuristic injection screen | Hrz1 | placeholder |
-| PIIRedactionPort | DLP | regex de-identification | Hrz1 | placeholder |
-| AuditSinkPort | Cloud Logging WORM | append-only SQLite | Hrz5 | placeholder |
+| GuardrailPort | Model Armor | heuristic injection screen | `agent-guardrail-gateway` | placeholder |
+| PIIRedactionPort | DLP | regex de-identification | `agent-guardrail-gateway` | placeholder |
+| AuditSinkPort | Cloud Logging WORM | append-only SQLite | `agent-observability` | placeholder |
 | ObservabilityTracerPort | Cloud Trace | no-op | n/a | no-op |
-| EvaluationGatePort | Gen AI eval | in-repo offline gate | Hrz4 | placeholder |
-| AgentRegistryPort | A2A in-process | in-process | Hrz3 | placeholder |
+| EvaluationGatePort | Gen AI eval | in-repo offline gate | `model-quality-gate` | placeholder |
+| AgentRegistryPort | A2A in-process | in-process | `agent-registry` | placeholder |
 | ToolCatalogPort | MCP catalog | in-process catalog | n/a | placeholder |
 | AgentRuntimePort / SessionPort / MemoryPort | Agent Runtime / Sessions / Memory Bank | in-process | n/a | placeholder |
 
 Every adapter constructor is exactly `def __init__(self, settings: Settings) -> None`. The
 dotted paths in `config/settings.yaml` are the build contract (the contract test reads them).
 
-## 8. Eval gate (Hrz4 / P-08)
+## 8. Eval gate (`model-quality-gate` / P-08)
 
 `eval/run_eval.py` runs the real `LoanDocService` over a synthetic golden set (consistent +
 planted-inconsistency cases) with deterministic fakes, computing:
@@ -150,6 +150,5 @@ inconsistencies), `validation_precision` (>=0.90, no false flags on consistent d
 
 ## 9. Dependencies (catalog matrix)
 
-Hrz1 Guardrail (R1), Hrz3 Registry (R4), Hrz4 AI Quality eval gate at promotion (R5), Hrz5
-Observability/Audit (R2). Validated by Rsk3 at intake (R6). R3 / Hrz2 (RAG) is N/A. Synthetic
+`agent-guardrail-gateway` (R1), `agent-registry` (R4), `model-quality-gate` AI Quality eval gate at promotion (R5), `agent-observability` (R2). Validated by `architecture-validator` at intake (R6). R3 / `enterprise-knowledge-base` (RAG) is N/A. Synthetic
 applicant data is fictional.

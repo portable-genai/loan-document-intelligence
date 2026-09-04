@@ -5,7 +5,7 @@ LLM, and, importantly, where its responsibilities **stop** and a sibling catalog
 takes over. Cross-references: [`README.md`](../../README.md), [`DEMO.md`](../../DEMO.md),
 [`SPEC.md`](../../SPEC.md).
 
-### What does Doc5 actually produce?
+### What does `loan-document-intelligence` actually produce?
 
 A cited, audited **income verification** for a retail-lending application. From an
 applicant's documents (payslips, bank statements, and the declared application data) it
@@ -33,7 +33,7 @@ No. It is **decision-support for underwriting, not a lending decision**. Every o
 `requires_human_review=True`, and `LoanReviewPolicy.requires_review()` always returns
 `True` (maker-checker, P-06). Escalation signals (an INCONSISTENT verdict, a failed
 affordability check, a declining-balance red flag) only *raise* the review bar; they never
-lower it and never auto-execute. Escalated cases route to the human-review console (Hrz7)
+lower it and never auto-execute. Escalated cases route to the human-review console (`human-review-console`)
 rather than a per-repo boolean.
 
 ### Which capabilities does this repo own vs integrate from the catalog?
@@ -44,24 +44,24 @@ cross-validation, income verification, and the maker-checker policy). It **integ
 (via the `platform` profile's HTTP adapters) cross-cutting concerns owned by sibling
 platform systems; do not rebuild these in a fork:
 
-| Concern | Owned by (catalog id / repo) | Doc5's role |
+| Concern | Owned by (catalog id / repo) | `loan-document-intelligence`'s role |
 |---|---|---|
-| Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | **Hrz1** `agent-guardrail-gateway` | consumes it on every request (input + output screen) |
-| Agent registry, versioning, identity, entitlements | **Hrz3** `agent-registry` | publishes its A2A AgentCard for discovery |
-| AI-quality / eval / model-risk promotion gate | **Hrz4** `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
-| Observability + immutable WORM prompt/response audit | **Hrz5** `agent-observability` | writes audit events to it; traces spans through it |
-| Human-review & maker-checker console | **Hrz7** `review-kit` producer | routes an escalated case to it (rule R8) |
-| Architecture-conformance validation at intake | **Rsk3** | is validated by it (R6) |
-| On-prem, CPU-only DLP scrub before egress | **Rsk6** `onprem-dlp` | the sovereign-DLP option behind the redaction port |
+| Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | `agent-guardrail-gateway` | consumes it on every request (input + output screen) |
+| Agent registry, versioning, identity, entitlements | `agent-registry` | publishes its A2A AgentCard for discovery |
+| AI-quality / eval / model-risk promotion gate | `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
+| Observability + immutable WORM prompt/response audit | `agent-observability` | writes audit events to it; traces spans through it |
+| Human-review & maker-checker console | `human-review-console` `review-kit` producer | routes an escalated case to it (rule R8) |
+| Architecture-conformance validation at intake | `architecture-validator` | is validated by it (R6) |
+| On-prem, CPU-only DLP scrub before egress | `onprem-dlp` | the sovereign-DLP option behind the redaction port |
 
 So the guardrail, audit sink, eval platform, and review console are *dependencies*, not
 features of this repo. Note this agent does document extraction plus deterministic
-validation, **not** RAG over a corpus, so the governed knowledge base (Hrz2 / R3) is **N/A**
-for Doc5.
+validation, **not** RAG over a corpus, so the governed knowledge base (`enterprise-knowledge-base` / R3) is **N/A**
+for `loan-document-intelligence`.
 
 ### How does this relate to the other lending / financial-crime systems in the catalog?
 
-Doc5 is onboarding-time income verification from documents. It is deliberately scoped to the
+`loan-document-intelligence` is onboarding-time income verification from documents. It is deliberately scoped to the
 document-diligence slice and should not absorb capabilities that have (or may get) their own
 catalog home: enterprise credit decisioning, fraud/AML transaction monitoring, or perpetual
 re-verification of the existing book. Check

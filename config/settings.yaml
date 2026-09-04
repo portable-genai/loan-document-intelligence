@@ -183,9 +183,9 @@ adapters:
     platform: loan_doc_intel.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
     local: loan_doc_intel.adapters.local.tool_catalog:LocalToolCatalogAdapter
     onprem: loan_doc_intel.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
-  # review_router (rule R8): route a requires_human_review escalation to the Hrz7 Human-Review
+  # review_router (rule R8): route a requires_human_review escalation to the human-review-console Human-Review
   # & Maker-Checker Console via the shared review-kit, not a per-repo boolean. local enqueues
-  # to an in-memory outbox so the routing path runs offline; gcp/platform submit over S2S to Hrz7's
+  # to an in-memory outbox so the routing path runs offline; gcp/platform submit over S2S to human-review-console's
   # service intake; onprem is the sovereign-console migration placeholder.
   review_router:
     gcp: loan_doc_intel.adapters.platform.review_router:PlatformReviewRouter
