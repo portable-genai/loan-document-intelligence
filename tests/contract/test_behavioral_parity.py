@@ -5,9 +5,9 @@ its Protocol. This suite proves the stronger claim behind the no-lock-in promise
 (P-02, P-12): for one canonical request, every SDK-free implementation of a port behaves
 identically at the domain boundary, so a profile swap changes the wiring and nothing else.
 
-Doc5 (this repo) ships a real ``platform`` HTTP client alongside the ``local`` in-process
-adapter for the guardrail-gateway and observability ports (redaction, guardrail, audit), so
-for each of those we put the SAME request through both and require identical domain-level
+loan-document-intelligence (this repo) ships a real ``platform`` HTTP client alongside the ``local``
+in-process adapter for the guardrail-gateway and observability ports (redaction, guardrail, audit),
+so for each of those we put the SAME request through both and require identical domain-level
 behavior:
 
 * ``local``    - the in-process offline adapter answers with real domain objects;
@@ -87,7 +87,7 @@ def test_redaction_parity_same_request_every_implementation():
     results: dict[str, RedactionResult] = {"local": _adapter("redaction", "local").redact(PII_TEXT)}
 
     with respx.mock:
-        # The Hrz1 gateway is DLP-backed; serve its documented /v1/redact answer for the
+        # The agent-guardrail-gateway is DLP-backed; serve its documented /v1/redact answer for the
         # same request (info-type masks), matching what the local regex adapter produced.
         respx.post(f"{GUARDRAIL_GATEWAY}/v1/redact").respond(
             200,
@@ -187,7 +187,7 @@ def test_audit_parity_identical_payload_at_every_sink():
     local_audit.record(event)
     assert local_audit.read_all() == [expected]
 
-    # platform sink (Hrz5 observability): the POSTed body is byte-identical to what local stored.
+    # platform sink (agent-observability): the POSTed body is byte-identical to what local stored.
     with respx.mock:
         route = respx.post(f"{OBSERVABILITY}/v1/audit").respond(202)
         _adapter("audit", "platform").record(event)

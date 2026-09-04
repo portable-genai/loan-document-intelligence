@@ -1,4 +1,4 @@
-# Demo scripts : Doc5 loan / mortgage document intelligence
+# Demo scripts : `loan-document-intelligence` loan / mortgage document intelligence
 
 All scripts are SDK-free and run against the in-process `local` stack (no Google Cloud,
 no API key, no emulator). Run them from the repo root with the package on the path and the

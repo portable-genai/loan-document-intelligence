@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Credential-free anti-rot check for the real Doc5 demo pipeline and HTML proof hooks."""
+"""Credential-free anti-rot check for the real loan-document-intelligence demo pipeline and HTML
+proof hooks.
+"""
 
 from __future__ import annotations
 

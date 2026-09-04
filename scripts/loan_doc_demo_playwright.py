@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Presenter-paced walkthrough for the Doc5 audit-first UI.
+"""Presenter-paced walkthrough for the loan-document-intelligence audit-first UI.
 
 The same runner targets the local demo server or a reviewed hosted demo URL. Presenter notes
 are printed only to the terminal, after which each action proves its visible business result

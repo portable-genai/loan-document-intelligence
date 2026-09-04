@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded executable portability proof for Doc5.
+"""Bounded executable portability proof for loan-document-intelligence.
 
 This proof executes the local decision path, audit chain, profile map, managed construction
 seam, and fail-fast on-premises boundary. It does not claim a live cloud deployment or a

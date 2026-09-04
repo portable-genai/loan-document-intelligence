@@ -1,8 +1,9 @@
-"""Local ReviewRouterPort: enqueue the routed review to an in-memory outbox (no live Hrz7).
+"""Local ReviewRouterPort: enqueue the routed review to an in-memory outbox (no live
+human-review-console).
 
-Exercises the R8 routing path offline: an escalated loan case is converted to a review and
-enqueued (the same transactional outbox the platform adapter flushes to Hrz7), so tests and the
-offline demo can assert that an escalation is routed without a running console.
+Exercises the R8 routing path offline: an escalated loan case is converted to a review and enqueued
+(the same transactional outbox the platform adapter flushes to human-review-console), so tests and
+the offline demo can assert that an escalation is routed without a running console.
 """
 
 from __future__ import annotations

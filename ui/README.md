@@ -1,7 +1,7 @@
-# Doc5 demo console (UI)
+# `loan-document-intelligence` demo console (UI)
 
-A small React / Next.js console for the Doc5 Loan / Mortgage Document Intelligence service. It
-renders the three Doc5 artifacts (the `LoanApplicationCase`, its `CrossValidationResult`, and
+A small React / Next.js console for the `loan-document-intelligence` Loan / Mortgage Document Intelligence service. It
+renders the three `loan-document-intelligence` artifacts (the `LoanApplicationCase`, its `CrossValidationResult`, and
 the `IncomeVerificationSummary`) returned by the FastAPI backend.
 
 The console has its own gate, separate from the Python one: see [Gate](#gate) below.

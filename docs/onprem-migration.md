@@ -1,6 +1,6 @@
 # On-prem migration guide (the exit story, P-12)
 
-Doc5's reversibility is a *demonstrable* property, not a claim. The domain core talks only to
+`loan-document-intelligence`'s reversibility is a *demonstrable* property, not a claim. The domain core talks only to
 ports; the managed Google Cloud services sit behind adapters in `adapters/gcp/`. Switching to
 an on-premise platform (for example Google Distributed Cloud, or a sovereign data centre) is a
 matter of filling in the `adapters/onprem/` placeholders : the domain logic and the service
@@ -46,5 +46,5 @@ the methods raise `NotImplementedError` until a real backend is wired in.
    on-prem endpoints and deploy.
 
 Because the deterministic cross-validation lives entirely in `domain/cross_validator.py` with
-no external dependency, the heart of Doc5 : the part that actually decides PASS / WARN / FAIL :
+no external dependency, the heart of `loan-document-intelligence` : the part that actually decides PASS / WARN / FAIL :
 runs identically on any platform.

@@ -1,6 +1,6 @@
 """The profile has ONE source of truth, and it fails closed on an unset variable.
 
-Mirrors Hrz7 (``human-review-console/tests/test_profile_single_source.py``) as the
+Mirrors human-review-console (``human-review-console/tests/test_profile_single_source.py``) as the
 standing gate for the absence-read-as-consent class. Any module that reads
 ``LOAN_DOC_PROFILE`` directly can reintroduce the whole class with its own permissive
 fallback, so only ``config.resolve_profile`` may read it.

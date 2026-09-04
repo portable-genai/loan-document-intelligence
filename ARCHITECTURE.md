@@ -1,6 +1,6 @@
-# Doc5 architecture
+# `loan-document-intelligence` architecture
 
-Doc5 is a hexagonal (ports-and-adapters) service. The domain core is pure standard library:
+`loan-document-intelligence` is a hexagonal (ports-and-adapters) service. The domain core is pure standard library:
 it knows nothing about Google Cloud, ADK or FastAPI. Every external capability is a
 `typing.Protocol` port, and each port has four interchangeable adapter families: `gcp`
 (managed services), `local` (a WORKING SDK-free offline stack, the dev / test default),
@@ -54,10 +54,10 @@ flowchart TB
   end
 
   subgraph PLAT["adapters/platform"]
-    Hrz1["Hrz1 guardrail and redact"]
-    Hrz3["Hrz3 registry"]
-    Hrz4["Hrz4 eval gate"]
-    Hrz5["Hrz5 audit"]
+    `agent-guardrail-gateway`["`agent-guardrail-gateway` and redact"]
+    `agent-registry`["`agent-registry`"]
+    `model-quality-gate`["`model-quality-gate`"]
+    `agent-observability`["`agent-observability`"]
   end
 
   subgraph ONP["adapters/onprem"]
@@ -71,9 +71,9 @@ flowchart TB
   SVC --> EXT & LLM & SAFE & OBS
   EXT --> DAI & LPARSE & STUB
   LLM --> GEM & LLLM & STUB
-  SAFE --> MA & DLP & LSAFE & Hrz1 & STUB
-  OBS --> LOG & TR & LAUD & Hrz5 & STUB
-  GOV --> EV & LGOV & Hrz3 & Hrz4 & STUB
+  SAFE --> MA & DLP & LSAFE & `agent-guardrail-gateway` & STUB
+  OBS --> LOG & TR & LAUD & `agent-observability` & STUB
+  GOV --> EV & LGOV & `agent-registry` & `model-quality-gate` & STUB
 ```
 
 ## Processing pipeline (full R1 safety)

@@ -1,6 +1,6 @@
 # Adoption FAQ
 
-For an engineering lead forking this repo (Doc5, Loan / Mortgage Document Intelligence) as
+For an engineering lead forking this repo (`loan-document-intelligence`, Loan / Mortgage Document Intelligence) as
 their institution's base. The step-by-step is [`docs/ADOPTING.md`](../ADOPTING.md); this
 answers the "will it hurt later?" questions.
 

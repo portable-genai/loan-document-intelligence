@@ -1,6 +1,6 @@
-# Doc5 operations runbook
+# `loan-document-intelligence` operations runbook
 
-Operational notes for running and deploying the Doc5 Loan / Mortgage Document Intelligence
+Operational notes for running and deploying the `loan-document-intelligence` Loan / Mortgage Document Intelligence
 service. This is a reference build; adapt to your own environment, change-management and
 on-call processes.
 
@@ -9,7 +9,7 @@ on-call processes.
 | Profile | Use | Needs GCP SDK |
 | --- | --- | --- |
 | `local` | functional offline dev, CI and demo stack | no |
-| `platform` | inside the full platform (delegates to Hrz1/Hrz3/Hrz4/Hrz5) | only for the gcp-bound ports |
+| `platform` | inside the full platform (delegates to `agent-guardrail-gateway`, `agent-registry`, `model-quality-gate`, `agent-observability`) | only for the gcp-bound ports |
 | `gcp` | standalone managed deployment | yes (`pip install -e ".[gcp,dev]"`) |
 | `onprem` | fail-fast adopter seam until sovereign adapters are supplied | no |
 

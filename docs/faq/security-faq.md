@@ -1,6 +1,6 @@
 # Security FAQ
 
-For an application-security team reviewing this repo (Doc5, Loan / Mortgage Document
+For an application-security team reviewing this repo (`loan-document-intelligence`, Loan / Mortgage Document
 Intelligence) before adopting it as a base. Answers reflect the current code.
 Cross-references: [`ARCHITECTURE.md`](../../ARCHITECTURE.md), [`COMPLIANCE.md`](../../COMPLIANCE.md),
 [`docs/embedding-and-identity.md`](../embedding-and-identity.md), and the per-check evidence
@@ -92,7 +92,7 @@ re-redacted after extraction, and the `AuditEvent` stores only `redacted_prompt`
 `redacted_response` (audit check C3). National-identifier detection is jurisdiction-driven
 (`domain/pii_patterns.py`, one SG / HK / JP / AU pack selected by `pii.jurisdictions` /
 `LOAN_DOC_PII_JURISDICTIONS`), so a fork scrubs and gates on its own identifiers. The
-runtime guardrail / DLP gateway itself is the sibling **Hrz1** service; this repo consumes
+runtime guardrail / DLP gateway itself is the sibling `agent-guardrail-gateway` service; this repo consumes
 it rather than re-implementing it.
 
 ### How tamper-evident is the audit trail? What are its limits?
@@ -103,7 +103,7 @@ append-only, JSONL export / restore, a `verify_chain()` check, and an **honest-l
 docstring** stating exactly which tamper classes the chain alone cannot catch (a full rewrite
 carries no secret). In production the `gcp` profile writes to a locked WORM Cloud Logging
 bucket, which provides non-rewritability itself. This repo does **not** replace the platform
-audit system (Hrz5); the local chain is the offline stand-in (audit check C9).
+audit system (`agent-observability`); the local chain is the offline stand-in (audit check C9).
 
 ### Supply chain: are dependencies pinned and scanned?
 

@@ -1,17 +1,16 @@
-"""Contract test: the platform eval adapter speaks Hrz4's hardened /v1 contract.
+"""Contract test: the platform eval adapter speaks model-quality-gate's hardened /v1 contract.
 
-Hrz4 (``model-quality-gate``, A4) hardened its API, and this pins the client to it
+model-quality-gate (``model-quality-gate``, A4) hardened its API, and this pins the client to it
 (mocking the sibling service with respx, the same way ``test_behavioral_parity`` does):
 
-* ``POST /v1/evaluations`` and ``POST /v1/gate`` take a structured ``target`` plus a
-  top-level ``dataset_id`` that MUST equal ``target.dataset_id`` (Hrz4 422s otherwise);
-* metrics are selected server-side by the registered ``bundle`` : sending a metric name
-  is now rejected, so the client must send none;
-* the evaluations response carries a ``results`` list (not ``metrics``), plus the evidence
-  that lets somebody re-derive those scores later: a positive example count, a run id, a
-  dataset version and digest, an evaluator, artifact refs and an attestation flag;
-* ``gate`` returns a verdict RE-DERIVED from a complete promotion decision, never the
-  aggregate boolean the service reports.
+* ``POST /v1/evaluations`` and ``POST /v1/gate`` take a structured ``target`` plus a top-level
+  ``dataset_id`` that MUST equal ``target.dataset_id`` (model-quality-gate 422s otherwise); *
+  metrics are selected server-side by the registered ``bundle`` : sending a metric name is now
+  rejected, so the client must send none; * the evaluations response carries a ``results`` list (not
+  ``metrics``), plus the evidence that lets somebody re-derive those scores later: a positive
+  example count, a run id, a dataset version and digest, an evaluator, artifact refs and an
+  attestation flag; * ``gate`` returns a verdict RE-DERIVED from a complete promotion decision,
+  never the aggregate boolean the service reports.
 
 The response fixtures below are large on purpose. The hardened ``agent-eval-kit`` client
 recomputes every verdict from the evidence and raises on any contradiction, so a body cannot
@@ -51,7 +50,8 @@ _DATASET_VERSION = "golden_cases@2026-08-01"
 _MODEL_CARD_REF = "gs://fictional-hrz4-evidence/model-cards/doc5-loan-document-intelligence.md"
 _MRM_REF = "gs://fictional-hrz4-evidence/mrm/doc5-loan-document-intelligence-2026-08.json"
 
-# A representative Hrz4 /v1/evaluations metric set (the "results" key, not "metrics"). Every
+# A representative model-quality-gate /v1/evaluations metric set (the "results" key, not "metrics").
+# Every
 # row is internally CONSISTENT: ``passed`` equals ``score >= threshold``.
 _RESULTS = [
     {"metric": "extraction_accuracy", "score": 0.91, "threshold": 0.80, "passed": True},
@@ -114,7 +114,7 @@ def _adapter() -> RemoteEvaluationAdapter:
 
 
 def _assert_valid_request_body(body: dict) -> None:
-    """Assert the request body matches Hrz4's hardened contract."""
+    """Assert the request body matches model-quality-gate's hardened contract."""
     # The target is a structured object carrying the pinned reasoning model + dataset id.
     target = body["target"]
     assert isinstance(target, dict)
@@ -122,7 +122,7 @@ def _assert_valid_request_body(body: dict) -> None:
     assert target["model"] == Settings.load(CONFIG_PATH).models.reasoning
     assert target["dataset_id"] == DATASET_ID
 
-    # Top-level dataset_id must mirror target.dataset_id (Hrz4 422s on divergence).
+    # Top-level dataset_id must mirror target.dataset_id (model-quality-gate 422s on divergence).
     assert body["dataset_id"] == target["dataset_id"] == DATASET_ID
 
     # Metrics are selected by the registered bundle, never by name.
