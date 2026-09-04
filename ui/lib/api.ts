@@ -36,7 +36,7 @@ if (BASE_SETTING.isConfiguredEmpty) {
       "default deliberately, or give it the API origin this deployment should call.",
   );
 }
-const BASE = (BASE_SETTING.hasValue ? BASE_SETTING.value : DEFAULT_BASE).replace(
+export const API_BASE = (BASE_SETTING.hasValue ? BASE_SETTING.value : DEFAULT_BASE).replace(
   /\/+$/,
   "",
 );
@@ -61,7 +61,7 @@ function requestHeaders(): Record<string, string> {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: requestHeaders(),
     body: JSON.stringify(body),
@@ -73,7 +73,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: requestHeaders() });
+  const res = await fetch(`${API_BASE}${path}`, { headers: requestHeaders() });
   if (!res.ok) {
     throw new Error(`${path} returned ${res.status}`);
   }

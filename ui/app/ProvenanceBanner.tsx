@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { API_BASE } from "../lib/api";
+
 /**
  * The provenance every served UI states at the top of every page: WHERE the runtime sits
  * and WHICH model answers (org decision, 2026-08-30).
@@ -30,10 +32,21 @@ export function provenance(runtime: string, model: string): string {
   return `${where} · model ${model}`;
 }
 
-// Same origin as every other call this console makes: the route handler under /api/agent
-// forwards to the service, so the browser never learns its address and never holds its
-// credential. Health is not exempt from that.
-const API = "/api/agent";
+// Same base as every other call this console makes, resolved once in `lib/api` from
+// NEXT_PUBLIC_API_BASE: `<mount>/api` under the portal, the service's own origin standalone.
+//
+// Sharing the base is what makes health REACHABLE, not merely tidy. The `connect-src` this
+// console ships is built from that same value, and a cross-origin standalone run is on the
+// service's CORS allowlist because every other call already needs to be. A health check on a
+// base of its own would have to earn both of those separately, and would be silently refused
+// until it did.
+//
+// It used to read `/api/agent`, the same-origin route handler the service template ships. This
+// console has no such handler -- it talks to its backend directly -- so the health call fetched
+// a path nothing serves, took the failure branch, and rendered NOTHING. Silently, by the design
+// two paragraphs up, on every page load since the banner landed. The lesson is in the coupling:
+// a banner that names a transport its own console does not use cannot fail loudly, because the
+// only thing it is allowed to do on failure is disappear.
 
 /**
  * Renders once the service has answered, and nothing before that.
@@ -49,7 +62,7 @@ export function ProvenanceBanner() {
 
   useEffect(() => {
     let live = true;
-    fetch(API + "/healthz", { cache: "no-store" })
+    fetch(`${API_BASE}/healthz`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
       .then((body) => {
         if (!live || !body) return;
