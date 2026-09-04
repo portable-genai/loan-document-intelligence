@@ -153,3 +153,94 @@ def test_not_implemented_is_claimed_only_by_an_adapter_that_never_calls_a_model(
             f"{binding} reports managed-not-implemented but calls {call!r}: it generates, so "
             "the model it calls must be named rather than declared absent"
         )
+
+
+def test_the_banner_calls_a_base_this_console_actually_serves() -> None:
+    """The half of the contract that lives in the BROWSER, and the half that was broken.
+
+    Every assertion above is about the service: the profile implies a runtime, the schema carries
+    both fields, the endpoint answers from settings rather than a literal. All of it was true, and
+    green, for as long as the banner has existed -- while the banner rendered nothing at all, on
+    every page load, standalone and embedded. The service was never the defect.
+
+    The banner was fetching ``/api/agent/healthz``, the same-origin route handler the service
+    template ships. This console does not ship one; it calls its backend directly on
+    ``NEXT_PUBLIC_API_BASE``. So the health call 404'd, took the failure branch, and the failure
+    branch renders nothing -- deliberately, because a banner that guessed would assert provenance
+    it does not have. A check that cannot fail loudly fails as an ABSENCE, and an absent strip is
+    exactly what no reviewer notices. That is why this assertion exists and a glance did not do.
+
+    Both architectures are legitimate, so this pins AGREEMENT rather than a literal: a tree with
+    ``ui/app/api/agent`` proxies through its own origin and the banner should name that path; a
+    tree without one must read the same base the rest of its console reads. The combination that
+    shipped -- naming the proxy while having none -- is the only one that is never right.
+    """
+    banner = Path("ui/app/ProvenanceBanner.tsx").read_text()
+    proxies_through_own_origin = Path("ui/app/api/agent").is_dir()
+
+    assert ('"/api/agent"' in banner) == proxies_through_own_origin, (
+        "the banner names /api/agent but this console has no route handler at "
+        "ui/app/api/agent, so the health call reaches nothing and the banner renders nothing"
+        if not proxies_through_own_origin
+        else "this console ships a /api/agent route handler but the banner does not use it"
+    )
+
+    if not proxies_through_own_origin:
+        assert "API_BASE" in banner, (
+            "the banner must resolve its base the way the rest of the console does, through the "
+            "NEXT_PUBLIC_API_BASE reader in ui/lib/api.ts -- a second, independently spelled base "
+            "is how the two drift apart again"
+        )
+
+
+def _first_px(block: str, property_name: str) -> int:
+    """The TOP value of a ``margin``/``padding`` shorthand, in px, or 0 if unset.
+
+    Only the shorthand is read because that is the only form these stylesheets use, and a
+    parser that quietly returned 0 for a longhand it could not see would make the assertion
+    below pass by blindness.
+    """
+    import re as _re
+
+    match = _re.search(rf"^\s*{property_name}:\s*([^;]+);", block, _re.MULTILINE)
+    if match is None:
+        return 0
+    first = match.group(1).split()[0]
+    assert first.endswith("px") or first == "0", (
+        f"{property_name} shorthand starts with {first!r}, which this check cannot read; "
+        "express the offset in px so the geometry stays assertable"
+    )
+    return int(first.removesuffix("px"))
+
+
+def _rule(css: str, selector: str) -> str:
+    start = css.index(selector + " {")
+    return css[start : css.index("}", start)]
+
+
+def test_the_banner_is_where_a_reader_can_actually_see_it() -> None:
+    """A banner that renders off-screen has satisfied every other assertion in this file.
+
+    The strip is full-bleed, and it reaches the viewport edge by cancelling the padding its host
+    carries: ``margin: -32px -18px 20px`` against a ``body`` with ``padding: 32px 18px``. That is
+    correct, and it is correct ONLY in the consoles it was written for. Carried into a console
+    whose ``body`` has no padding -- there is nothing to cancel -- the same three numbers hoist
+    the strip 32px ABOVE the viewport. It renders, it holds the right text, it is in the DOM on
+    every page load, and it is visible on none.
+
+    That is the second half of the same defect as the fetch above, and it has the same shape: a
+    rule that assumed a console shape this tree does not have, failing in the one way nothing
+    reports. Neither half alone would have put the strip on the page.
+
+    So this asserts the geometry rather than the literal, which keeps it true under both shapes:
+    whatever the banner pulls up by, the host must carry at least that much padding to give back.
+    """
+    css = Path("ui/app/globals.css").read_text()
+    pulled_up = _first_px(_rule(css, ".provenance-banner"), "margin")
+    given_back = _first_px(_rule(css, "body"), "padding")
+
+    assert pulled_up + given_back >= 0, (
+        f"the banner pulls itself up {-pulled_up}px to cancel padding, but body gives back only "
+        f"{given_back}px, so the strip renders {-(pulled_up + given_back)}px above the viewport "
+        "and no reader ever sees the provenance this file exists to guarantee"
+    )

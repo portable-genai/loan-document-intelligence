@@ -45,7 +45,13 @@ body {
 }
 
 .provenance-banner {
-  margin: -32px -18px 20px;
+  /* Full-bleed, and the zero top margin is the point: the strip already spans the viewport
+     because this console puts no padding on `body`. The rule arrived here as
+     `margin: -32px -18px 20px`, which is correct in the plain-CSS consoles it was written for --
+     there `body` carries `padding: 32px 18px` and the negative margins cancel it to reach the
+     edge. There is nothing here to cancel, so those same three numbers hoisted the strip 32px
+     ABOVE the viewport: rendered on every page load, seen on none. */
+  margin: 0 0 20px;
   padding: 5px 18px;
   border-bottom: 1px solid var(--ink-200);
   background: var(--ink-100);
