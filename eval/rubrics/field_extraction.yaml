@@ -1,0 +1,42 @@
+# Scored by: eval/run_eval.py::score_field_extraction_f1 against `expected_fields`, which names
+# per document the fields a REVIEWER says that document TYPE must yield for the decision to be
+# made without a human re-reading it. Written from the type rather than from the fixture, because
+# an oracle taken from the fixture agrees with it by construction.
+#
+# Why this metric exists beside extraction_accuracy. That one is a per-DOCUMENT number: the
+# fraction of expected documents that produced a non-empty extract. Two documents, one of which
+# came back with a single field out of four, score a perfect 1.000. It is the number the
+# straight-through-processing claim was resting on, and it cannot see the case that actually
+# sends a file to a human.
+#
+# F1 rather than recall alone, because a parser that emitted every field name it could think of
+# would score perfect recall while producing a document nobody can use.
+#
+# What this does NOT measure, and the distinction is worth stating because the metric name
+# invites the other reading: the offline profile has no OCR, so this is not reading accuracy. It
+# measures whether every field the decision needs survives the pipeline to the point the decision
+# is made. A field dropped or renamed on the way through is a file that goes to a human, which is
+# what the claim is about.
+metric: field_extraction_f1
+description: >
+  Per-field F1 across the fields a reviewer says each document type must yield, averaged per
+  document and then per case.
+threshold: 0.85
+direction: maximize
+applies_to:
+  - DocumentExtract.fields
+criteria:
+  - id: required_field_present
+    description: Each field the document type owes appears in the extract.
+    weight: 0.5
+  - id: no_invented_field
+    description: The extract does not pad itself with fields nothing asked for.
+    weight: 0.5
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+denominator:
+  # A rate over the FIELDS a reviewer named, summed across documents, not over the ten cases.
+  # That difference is what makes this a different measurement from the metric beside it.
+  kind: rate
+  over: reviewer-named fields across the golden documents
