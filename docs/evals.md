@@ -63,7 +63,7 @@ it is rather than the rule being guessed from the number.
 |---|---|---|---|
 | `extraction_accuracy` | 0.8 | a rate; needs 5 positives | Fraction of an application's documents that produced a non-empty structured extract. Averaged over the dataset. |
 | `field_extraction_f1` | 0.85 | a rate; needs 7 positives | Per-field F1 across the fields a reviewer says each document type must yield, averaged per document and then per case. |
-| `pii_safety` | 0.99 | a rate; needs 100 positives | No unredacted applicant PII (NRIC, email, bank account number) survives into any audit record or output. A single leak drops the whole metric below 0.99. |
+| `pii_safety` | 1 | a rate; needs 0 positives | No unredacted applicant PII (NRIC, email, bank account number) survives into any audit record or output. A single leak drops the whole metric below 0.99. |
 | `validation_precision` | 0.9 | a rate; needs 10 positives | On a consistent case (no planted inconsistency), no check falsely FAILs. A single false flag on a clean case drops this metric. |
 | `validation_recall` | 0.9 | a rate; needs 10 positives | Of the inconsistencies planted in a case (salary-credit mismatch, name mismatch, balance decline, income inconsistency), the fraction the deterministic validator flagged as FAIL. Averaged over the inconsistent cases. |
 
