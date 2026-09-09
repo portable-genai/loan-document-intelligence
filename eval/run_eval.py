@@ -53,7 +53,12 @@ from pathlib import Path
 # The --mode smoke|gate scaffold + aligned report rendering come from the shared
 # agent-eval-kit commons; this script keeps only its own offline
 # evaluator and gate runner.
-from agent_eval_kit import eval_main
+from agent_eval_kit import (
+    assert_denominator_supports,
+    dataset_digest,
+    eval_main,
+    load_rubrics,
+)
 
 from loan_doc_intel.adapters.local.redaction import LocalRegexRedactionAdapter
 from loan_doc_intel.config import PiiSettings, Settings
@@ -85,14 +90,23 @@ from loan_doc_intel.domain.models import (
 )
 from loan_doc_intel.envread import setting_or_default
 
-THRESHOLDS: dict[str, float] = {
-    "extraction_accuracy": 0.80,
-    "validation_recall": 0.90,
-    "validation_precision": 0.90,
-    "pii_safety": 0.99,
-}
+#: Where every bar lives. Not a dict here: a threshold written as a Python literal carries no
+#: argument. The rubric files carry the reasoning beside the number, and
+#: `agent_eval_kit.load_rubrics` reads them. What was here before was BOTH a dict and a loader
+#: that overlaid the rubrics on top of it, falling back to the dict when PyYAML was missing.
+
+#: The metrics this runner scores, in report order. Named so `assert_covers` can compare them
+#: with the rubric set in BOTH directions.
+SCORED: tuple[str, ...] = (
+    "extraction_accuracy",
+    "field_extraction_f1",
+    "validation_recall",
+    "validation_precision",
+    "pii_safety",
+)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+RUBRICS = _REPO_ROOT / "eval" / "rubrics"
 DEFAULT_DATASET = _REPO_ROOT / "eval" / "datasets" / "golden_cases.jsonl"
 
 # The pii_safety leak check MUST use the SAME jurisdiction pattern source as the runtime
@@ -170,6 +184,10 @@ class GoldenCase:
     expected_failed_checks: tuple[str, ...]
     jurisdiction: str = ""
     pii_in_inputs: bool = False
+    #: Per document, the fields a REVIEWER says that document TYPE must yield for the decision
+    #: to be made without a human re-reading it. Written from the type rather than from the
+    #: fixture, which is the whole point: an oracle taken from the fixture agrees with it.
+    expected_fields: dict[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def load_golden(path: Path) -> list[GoldenCase]:
@@ -193,6 +211,10 @@ def load_golden(path: Path) -> list[GoldenCase]:
                 expected_failed_checks=tuple(obj.get("expected_failed_checks", []) or ()),
                 jurisdiction=str(obj.get("jurisdiction", "")),
                 pii_in_inputs=bool(obj.get("pii_in_inputs", False)),
+                expected_fields={
+                    str(doc): tuple(str(name) for name in names)
+                    for doc, names in (obj.get("expected_fields") or {}).items()
+                },
             )
         )
     if not cases:
@@ -201,26 +223,8 @@ def load_golden(path: Path) -> list[GoldenCase]:
 
 
 def load_thresholds_from_rubrics() -> dict[str, float]:
-    """Read thresholds from ``eval/rubrics/*.yaml`` when PyYAML is available."""
-    thresholds = dict(THRESHOLDS)
-    try:
-        import yaml  # type: ignore[import-untyped]
-    except ImportError:
-        return thresholds
-
-    rubric_dir = _REPO_ROOT / "eval" / "rubrics"
-    for name in ("extraction_accuracy.yaml", "validation.yaml"):
-        rubric_path = rubric_dir / name
-        if not rubric_path.exists():
-            continue
-        doc = yaml.safe_load(rubric_path.read_text(encoding="utf-8")) or {}
-        metric = doc.get("metric")
-        if isinstance(metric, str) and "threshold" in doc:
-            thresholds[metric] = float(doc["threshold"])
-        for companion, spec in (doc.get("companion_metrics") or {}).items():
-            if isinstance(spec, dict) and "threshold" in spec:
-                thresholds[str(companion)] = float(spec["threshold"])
-    return thresholds
+    """Read every metric's reviewed bar out of ``eval/rubrics/*.yaml``. No fallback, by design."""
+    return load_rubrics(RUBRICS).thresholds()
 
 
 # --------------------------------------------------------------------------- #
@@ -536,6 +540,46 @@ def score_extraction_accuracy(case: GoldenCase) -> float:
     return round(len(produced & expected) / len(expected), 4)
 
 
+def score_field_extraction_f1(result: _CaseResult) -> float | None:
+    """Per-field F1 over the fields a REVIEWER says each document type must yield.
+
+    `extraction_accuracy` is a per-DOCUMENT number: the fraction of expected documents that
+    produced a non-empty extract. Two documents, one of which came back with a single field out
+    of four, scores a perfect 1.000. That is the number the straight-through-processing claim
+    was resting on, and it cannot see the case that actually sends a file to a human.
+
+    The unit here is the FIELD, and the oracle is `expected_fields`, written from the document
+    TYPE rather than from the fixture: a payslip must yield a name, an employer and a net pay,
+    whatever this particular payslip happens to contain. F1 rather than recall alone, because a
+    parser that emits every field name it can think of would score perfect recall.
+
+    What this does NOT measure, and the distinction matters: the offline profile has no OCR, so
+    this is not reading accuracy. It measures whether every field the decision needs survives
+    the pipeline to the point the decision is made. A field dropped or renamed on the way
+    through is a file that goes to a human, which is what the claim is about.
+
+    Returns ``None`` for a case that declares no expected fields, so it is not scored rather
+    than scored a vacuous 1.0.
+    """
+    expected = result.case.expected_fields
+    if not expected:
+        return None
+    produced = {extract.document_id: set(extract.fields) for extract in result.extracts}
+    scores: list[float] = []
+    for document_id, wanted_fields in expected.items():
+        wanted = set(wanted_fields)
+        got = produced.get(document_id, set())
+        if not wanted and not got:
+            continue
+        true_positives = len(wanted & got)
+        precision = true_positives / len(got) if got else 0.0
+        recall = true_positives / len(wanted) if wanted else 0.0
+        scores.append(
+            0.0 if not (precision + recall) else 2 * precision * recall / (precision + recall)
+        )
+    return round(sum(scores) / len(scores), 4) if scores else None
+
+
 def score_validation_recall(result: _CaseResult) -> float | None:
     """Of the planted inconsistencies, the fraction the validator caught."""
     expected = set(result.case.expected_failed_checks)
@@ -632,14 +676,24 @@ class _PerMetric:
 
 
 def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
+    # The rubrics and the scored set must agree in BOTH directions before anything is scored.
+    load_rubrics(RUBRICS).assert_covers(SCORED)
     cases = load_golden(dataset)
-    agg: dict[str, _PerMetric] = {m: _PerMetric() for m in THRESHOLDS}
+    agg: dict[str, _PerMetric] = {metric: _PerMetric() for metric in SCORED}
+    # What field_extraction_f1 is actually measured over: the fields a reviewer named, summed
+    # across documents. The case count is the wrong denominator, and it is the one the
+    # per-document metric beside it uses.
+    expected_field_count = 0
     print(f"Running offline eval gate over {len(cases)} golden cases (LoanDocService).\n")
 
     verdict_hits = 0
     for case in cases:
         result = _run_case(case)
         agg["extraction_accuracy"].scores.append(score_extraction_accuracy(case))
+        field_f1 = score_field_extraction_f1(result)
+        if field_f1 is not None:
+            agg["field_extraction_f1"].scores.append(field_f1)
+            expected_field_count += sum(len(names) for names in case.expected_fields.values())
         recall = score_validation_recall(result)
         if recall is not None:
             agg["validation_recall"].scores.append(recall)
@@ -655,17 +709,24 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
         EvalMetricResult(
             metric=metric,
             score=round(agg[metric].mean, 4),
-            threshold=thresholds.get(metric, THRESHOLDS[metric]),
-            passed=round(agg[metric].mean, 4) >= thresholds.get(metric, THRESHOLDS[metric]),
+            threshold=thresholds[metric],
+            passed=round(agg[metric].mean, 4) >= thresholds[metric],
         )
-        for metric in (
-            "extraction_accuracy",
-            "validation_recall",
-            "validation_precision",
-            "pii_safety",
-        )
+        for metric in SCORED
     )
-    return EvalReport(dataset=str(dataset), results=results, n_examples=len(cases))
+    # The corpus must be able to express every bar that claims a rate, against what actually
+    # divides it. field_extraction_f1 is a fraction over the FIELDS a reviewer named, which is
+    # what makes it a different measurement from the per-document metric beside it.
+    assert_denominator_supports(
+        thresholds["field_extraction_f1"], expected_field_count, metric="field_extraction_f1"
+    )
+    return EvalReport(
+        dataset=str(dataset),
+        results=results,
+        n_examples=len(cases),
+        dataset_digest=dataset_digest(dataset),
+        evaluator="offline heuristic (no cloud creds)",
+    )
 
 
 def run_gate(dataset: Path) -> tuple[EvalReport, bool]:

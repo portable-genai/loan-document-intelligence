@@ -54,9 +54,15 @@ test: ## Run unit + contract tests on the local profile (no GCP SDK required).
 eval: ## Run the A4 eval gate (extraction / validation recall+precision / PII safety).
 	$(PYTHON) eval/run_eval.py
 
+evals-doc: ## Regenerate docs/evals.md from the rubrics and the golden set.
+	$(PYTHON) scripts/render_evals_doc.py
+
+evals-doc-check: ## Fail when docs/evals.md and the artifacts it describes disagree.
+	$(PYTHON) scripts/render_evals_doc.py --check
+
 portability: portability-demo ## Standard fleet alias for the executable portability proof.
 
-check: lint test eval demo-selftest portability-demo ## Run the full offline quality gate.
+check: lint test eval evals-doc-check demo-selftest portability-demo ## Run the full offline quality gate.
 
 ui-install: ## Install the console's locked dependencies (what CI does).
 	npm ci --prefix $(UI_DIR)

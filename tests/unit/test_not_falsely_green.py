@@ -19,10 +19,10 @@ import pytest
 from agent_eval_kit import assert_can_go_red
 from eval.run_eval import (
     DEFAULT_DATASET,
-    THRESHOLDS,
     _CaseResult,
     _run_case,
     load_golden,
+    load_thresholds_from_rubrics,
     score_extraction_accuracy,
     score_pii_safety,
     score_validation_precision,
@@ -36,6 +36,10 @@ _INCONSISTENT = next(c for c in _GOLDEN if c.expected_failed_checks)
 _CONSISTENT = next(c for c in _GOLDEN if not c.expected_failed_checks)
 #: A planted applicant identifier, so pii_safety has a target to miss.
 _WITH_PII = next(c for c in _GOLDEN if c.pii_in_inputs)
+
+#: The reviewed bars, read from `eval/rubrics/*.yaml` exactly as the gate reads them. The
+#: module-level dict this used to import is gone: having both was two homes for one number.
+THRESHOLDS = load_thresholds_from_rubrics()
 
 
 @pytest.fixture(scope="module")
@@ -99,3 +103,40 @@ def test_pii_safety_can_go_red() -> None:
         threshold=THRESHOLDS["pii_safety"],
         metric="pii_safety",
     )
+
+
+def test_field_extraction_f1_can_go_red() -> None:
+    """A parser that drops the fields the decision needs must score below the bar.
+
+    The per-DOCUMENT metric beside this one cannot see that case: it asks whether the document
+    produced a non-empty extract, so a payslip that came back with one field out of three still
+    scores it a perfect 1.000.
+    """
+    from dataclasses import replace as _replace
+
+    from eval.run_eval import score_field_extraction_f1
+
+    case = next(c for c in _GOLDEN if c.expected_fields)
+    result = _run_case(case)
+    stripped = _replace(
+        result,
+        extracts=tuple(_replace(extract, fields={}) for extract in result.extracts),
+    )
+    assert_can_go_red(
+        lambda scored: score_field_extraction_f1(scored) or 0.0,
+        green=result,
+        red=stripped,  # every required field dropped on the way through
+        threshold=THRESHOLDS["field_extraction_f1"],
+        metric="field_extraction_f1",
+    )
+
+
+def test_every_scored_metric_has_a_reviewed_bar_and_every_bar_is_scored() -> None:
+    """Both directions. The second is the one nobody writes by hand, and the one that rots."""
+    from agent_eval_kit import load_rubrics
+    from agent_eval_kit.rubrics import RubricError
+    from eval.run_eval import RUBRICS, SCORED
+
+    load_rubrics(RUBRICS).assert_covers(SCORED)
+    with pytest.raises(RubricError, match="reads as governance"):
+        load_rubrics(RUBRICS).assert_covers(SCORED[:-1])
