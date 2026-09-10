@@ -17,12 +17,19 @@ Checks (CheckKind):
 * BALANCE_TREND : the dated bank balances are not on a sustained decline.
 * AFFORDABILITY : a simple verified-income-to-declared-obligations ratio sanity check.
 
+The two string checks compare LIKE WITH LIKE. A caller that redacts one side of the
+comparison (the service redacts every document extract before validation, and holds the
+applicant record raw) binds its redactor here, and both sides go through it; a caller that
+redacts neither binds nothing. A masked document value compared against a raw applicant
+value would FAIL an application a reviewer marked consistent.
+
 Pure domain code : no Google Cloud / ADK imports.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from .models import (
     Applicant,
@@ -81,6 +88,15 @@ class CrossValidator:
     balance_decline_fail_ratio: float = 0.40
     affordability_warn_ratio: float = 0.55
     affordability_fail_ratio: float = 0.70
+    #: Optional ``PIIRedactionPort``, bound by whoever redacts one side of the comparison.
+    #: LoanDocService redacts every document extract before validation (P-04) but holds the
+    #: applicant record raw, so NAME_MATCH / ADDRESS_MATCH would compare a MASKED document
+    #: value against an applicant value that still carries the identifier, and FAIL an
+    #: application a reviewer marked consistent. Bound here, both sides go through the same
+    #: redactor and the comparison is like for like. Typed ``Any`` (as the service types its
+    #: ports) so the domain keeps no ports import; ``None`` is the pure-domain case, where
+    #: neither side has been redacted and the raw values already compare like for like.
+    redaction: Any = None
 
     def __post_init__(self) -> None:
         ratios = (
@@ -205,6 +221,26 @@ class CrossValidator:
             citations=citations,
         )
 
+    def _comparable(self, text: str) -> str:
+        """Normalise ``text`` for comparison, through the same redactor both sides saw.
+
+        The redactor is applied to BOTH sides rather than only the applicant's, because the
+        validator cannot know which side its caller already redacted, and masking is
+        idempotent: a masked value carries no identifier left to match, so a second pass over
+        an already-redacted document value returns it unchanged. Whoever redacts one side
+        binds the redactor and both sides land in the same shape; nobody binds it and both
+        sides stay raw. What is refused either way is one masked value compared against one
+        that is not.
+
+        What this gives up, stated so it is not mistaken for a capability: two different
+        identifiers mask to the same token, so a name that differs from the applicant's only in
+        the identifier it carries compares equal. No check could see that difference before
+        either, because the pipeline masks the documents' copies before validation runs.
+        """
+        if self.redaction is not None:
+            text = self.redaction.redact(text).text
+        return _norm(text)
+
     def _field_match(
         self,
         by_type: dict[DocType, list[DocumentExtract]],
@@ -219,13 +255,11 @@ class CrossValidator:
                 if v:
                     values.append((v, e))
         citations = tuple(_doc_citation(e, field) for _, e in values)
-        observed_values = {_norm(v) for v, _ in values}
-        if applicant_value:
-            observed_values.add(_norm(applicant_value))
-
-        if len(observed_values) <= 1 and observed_values:
-            status = CheckStatus.PASS
-        elif not observed_values:
+        if not values:
+            # Nothing to cross-check, whatever the applicant declared. The applicant's own
+            # value is not a second opinion: added to an empty document set it makes a set of
+            # one, and a set of one used to PASS, reporting a consistent field having compared
+            # the applicant with itself and cited no document.
             return CrossValidationCheck(
                 kind=kind,
                 status=CheckStatus.WARN,
@@ -235,8 +269,10 @@ class CrossValidator:
                 severity=Severity.LOW,
                 citations=citations,
             )
-        else:
-            status = CheckStatus.FAIL
+        observed_values = {self._comparable(v) for v, _ in values}
+        if applicant_value:
+            observed_values.add(self._comparable(applicant_value))
+        status = CheckStatus.PASS if len(observed_values) == 1 else CheckStatus.FAIL
         return CrossValidationCheck(
             kind=kind,
             status=status,

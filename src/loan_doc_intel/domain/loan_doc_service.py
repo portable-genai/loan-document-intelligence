@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import contextlib
 from contextlib import nullcontext
+from dataclasses import replace
 from typing import Any
 
 from . import _grounded as g
@@ -103,7 +104,14 @@ class LoanDocService:
         self._tracer = tracer
         self._audit = audit
         self._entitlements = entitlements
-        self._validator = validator or CrossValidator()
+        # The validator MUST redact with the same redactor this service redacts extracts
+        # with. This pipeline masks every document extract (P-04) and holds the applicant
+        # record raw, so a validator without it would compare a MASKED document name against
+        # an applicant name that still carries the identifier and FAIL a consistent
+        # application. Bound here rather than left to each construction site because the
+        # asymmetry is this service's doing, and a caller that supplies its own reviewed
+        # thresholds should not have to know that.
+        self._validator = replace(validator or CrossValidator(), redaction=redaction)
         self._income = income_service or IncomeVerificationService()
         self._review = review_policy or LoanReviewPolicy()
         # Optional ReviewRouterPort (rule R8): when bound, an escalated case is routed to the
@@ -300,8 +308,6 @@ class LoanDocService:
         for key in list(new_fields):
             if key in redactable and new_fields[key]:
                 new_fields[key] = self._redaction.redact(new_fields[key]).text
-        from dataclasses import replace
-
         return replace(extract, fields=new_fields)
 
     # ------------------------------------------------------------------ #

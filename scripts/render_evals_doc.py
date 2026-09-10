@@ -104,9 +104,12 @@ def _exercised_block() -> list[str]:
         "  `field_extraction_f1` is measured over. That is the denominator, not the case count,",
         "  and the difference is what makes it a different measurement from the per-document",
         "  metric beside it.",
-        f"- **{planted} cases plant a raw identifier** on the bank statement's `account_holder`,",
-        "  a redactable field no deterministic check reads, so the PII fixture proves the",
-        "  extract-redaction call site without moving validation recall or precision.",
+        f"- **{planted} cases plant a raw identifier** on BOTH sides of NAME_MATCH and",
+        "  ADDRESS_MATCH, the applicant and the documents' `name` and `address`, and on the bank",
+        "  statement's `account_holder`, which no check reads. The cases stay consistent only",
+        "  while the validator compares like with like, masked against masked. Compare a masked",
+        "  document value against the raw applicant value and both checks FAIL, so a regression",
+        "  shows up as `validation_precision`, not as a quiet pass.",
         "",
     ]
 
