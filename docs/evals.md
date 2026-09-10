@@ -34,16 +34,33 @@ way through is a file that goes to a human, which is what the claim is about.
 
 ## A check with nothing to check, found by writing the oracle down
 
-`CrossValidator._field_match` builds its observed set from whatever the documents yield. The four
-`pii_in_inputs` cases deliberately carry no `name` or `address` on their extracts, so on those
-cases NAME_MATCH and ADDRESS_MATCH compare the applicant with itself and pass on a single value.
-**Four of the ten cases pass two checks that have nothing to check.**
+**Fixed.** `CrossValidator._field_match` built its observed set from whatever the documents
+yielded and then added the applicant's own value. The four `pii_in_inputs` cases carried no `name`
+or `address` on their extracts, so on those cases NAME_MATCH and ADDRESS_MATCH compared the
+applicant with itself and passed on a single value: four of the ten cases passed two checks that
+had nothing to check.
 
-That is not a fixture edit away from fixed. By the time the validator runs, the applicant value
-carries the planted identifier and the document value does not, so adding the fields makes both
-checks FAIL on cases a reviewer marked consistent. The real fix is for the validator to compare
-like with like, which is a service change and is tracked as one. It is written down here because
-an unmeasured check that goes unmentioned reads as a measured one.
+It was not a fixture edit away from fixed. The pipeline masks every document extract before
+validation and held the applicant record raw, so restoring the fields made both checks compare a
+masked document value against an applicant value still carrying the planted identifier, and FAIL
+on cases a reviewer marked consistent. The fix was in the validator, which now compares like with
+like: `LoanDocService` binds the redactor it masks extracts with onto the validator, and both sides
+of each comparison go through it. With that in place the four cases carry `name` and `address` on
+every extract, the runner plants each identifier on both sides, and the fields are in their
+`expected_fields`, so `field_extraction_f1` scores those cases too.
+
+Two things keep it fixed rather than merely unexercised:
+
+- **A field no document carries is a `WARN`, not a `PASS` on the applicant alone.** It is LOW
+  severity, so it neither fails the application nor moves the verdict, but it no longer reports a
+  comparison that never happened.
+- **The four cases are the regression test for the comparison.** Switch like-with-like off and
+  both checks FAIL on all four consistent cases, which takes `validation_precision` below its bar
+  and the gate red rather than passing quietly.
+
+What masked comparison gives up: two different identifiers mask to the same token, so NAME_MATCH
+cannot tell a name carrying one NRIC from the same name carrying another. No check could before
+either, because the documents' copies were already masked before validation ran.
 
 ## What is measured, and against what bar
 
@@ -74,13 +91,16 @@ Scored over 10 golden applications.
 - **10 golden applications** in `eval/datasets/golden_cases.jsonl`, of which
   **4 carry planted inconsistencies** for the validator to catch and the
   rest are consistent, which is what a false positive can fire on.
-- **30 reviewer-named fields across 6 cases**, which is what
+- **50 reviewer-named fields across 10 cases**, which is what
   `field_extraction_f1` is measured over. That is the denominator, not the case count,
   and the difference is what makes it a different measurement from the per-document
   metric beside it.
-- **4 cases plant a raw identifier** on the bank statement's `account_holder`,
-  a redactable field no deterministic check reads, so the PII fixture proves the
-  extract-redaction call site without moving validation recall or precision.
+- **4 cases plant a raw identifier** on BOTH sides of NAME_MATCH and
+  ADDRESS_MATCH, the applicant and the documents' `name` and `address`, and on the bank
+  statement's `account_holder`, which no check reads. The cases stay consistent only
+  while the validator compares like with like, masked against masked. Compare a masked
+  document value against the raw applicant value and both checks FAIL, so a regression
+  shows up as `validation_precision`, not as a quiet pass.
 
 ## How a metric is prevented from being decoration
 

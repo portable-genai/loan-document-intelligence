@@ -387,28 +387,12 @@ class _CaseResult:
     extracts: tuple[DocumentExtract, ...] = ()
 
 
-def _with_pii(applicant: Applicant, case: GoldenCase) -> Applicant:
-    """Plant the case's OWN jurisdiction identifier in the applicant (pii_safety).
+def _pii_fixture(case: GoldenCase) -> tuple[str, str]:
+    """The (label, identifier) this case plants, or a loud refusal.
 
-    The applicant record is where this vertical's PII actually lives and where the pipeline
-    actually redacts: ``_input_description`` builds the audited prompt out of the applicant's
-    name and address, so that is where the fixture belongs. Each case carries its own
-    market's identifier so the four configured packs are each exercised once, instead of the
-    gate proving Singapore four times over.
-
-    Planting here cannot move the other metrics, but for a reason worth stating because it is
-    NOT the reason the sibling verticals have. B5's CrossValidator DOES read the applicant's
-    name and address (NAME_MATCH / ADDRESS_MATCH compare them against the documents'), and it
-    reads them RAW while the documents' copies arrive redacted, so an applicant carrying an
-    NRIC would mismatch its own payslip and drop validation_precision to 0. The PII cases
-    therefore carry documents that do not restate the name or address: with no document value
-    to disagree with, ``_field_match`` sees the applicant's single value and PASSes. The
-    account number goes on the bank statement's ``account_holder`` field, which
-    ``_redact_extract`` redacts but no check reads, so the extract-redaction call site is
-    covered too. See the golden dataset's header comment.
+    Read by both planting sites, so a case whose jurisdiction is unusable is refused once,
+    before either side of the comparison has been built out of it.
     """
-    if not case.pii_in_inputs:
-        return applicant
     market = case.jurisdiction.upper()
     fixture = _PII_BY_JURISDICTION.get(market)
     if fixture is None:
@@ -431,29 +415,71 @@ def _with_pii(applicant: Applicant, case: GoldenCase) -> Applicant:
             "the leak check would not see it, so the case would score a vacuous 1.0. "
             f"Add it to LOAN_DOC_PII_JURISDICTIONS or drop pii_in_inputs."
         )
+    return fixture
+
+
+def _planted_identity(name: str, address: str, fixture: tuple[str, str]) -> tuple[str, str]:
+    """Append this case's identifiers to one identity, whichever side of the check holds it.
+
+    ONE helper for the applicant and for the documents, because NAME_MATCH / ADDRESS_MATCH
+    compare those two against each other. A fixture that planted an identifier on only one
+    side would plant an INCONSISTENCY no reviewer marked, and the four consistent PII cases
+    would be scoring the fixture's own asymmetry rather than the validator. The suffix is
+    appended to each side's own value rather than copied from the applicant's, so a
+    deliberately mismatched document stays mismatched.
+    """
     label, value = fixture
-    return replace(
-        applicant,
-        name=f"{applicant.name}, {label} {value}",
-        address=f"{applicant.address}, account {_ACCOUNT_FIXTURE}, {_EMAIL_FIXTURE}",
+    return (
+        f"{name}, {label} {value}",
+        f"{address}, account {_ACCOUNT_FIXTURE}, {_EMAIL_FIXTURE}",
     )
+
+
+def _with_pii(applicant: Applicant, case: GoldenCase) -> Applicant:
+    """Plant the case's OWN jurisdiction identifier in the applicant (pii_safety).
+
+    The applicant record is where this vertical's PII actually lives and where the pipeline
+    actually redacts: ``_input_description`` builds the audited prompt out of the applicant's
+    name and address, so that is where the fixture belongs. Each case carries its own
+    market's identifier so the four configured packs are each exercised once, instead of the
+    gate proving Singapore four times over.
+
+    Planting here cannot move the other metrics, and the reason is now the ordinary one. B5's
+    CrossValidator DOES read the applicant's name and address (NAME_MATCH / ADDRESS_MATCH
+    compare them against the documents'), but it compares like with like: the same redactor
+    the pipeline masks the extracts with masks the applicant value before the comparison, and
+    :func:`_with_pii_extracts` plants the same identifier on the documents' copies. Both
+    sides carry it, both sides are masked, and the checks compare two real values.
+    """
+    if not case.pii_in_inputs:
+        return applicant
+    name, address = _planted_identity(applicant.name, applicant.address, _pii_fixture(case))
+    return replace(applicant, name=name, address=address)
 
 
 def _with_pii_extracts(
     by_doc_id: dict[str, DocumentExtract], case: GoldenCase
 ) -> dict[str, DocumentExtract]:
-    """Plant the case's identifiers on the bank statement's ``account_holder`` field.
+    """Plant the case's identifiers on the documents' identity fields.
 
     The pipeline redacts in TWO places and :func:`_with_pii` only reaches one of them. This
     is the other: ``_extract_and_redact`` de-identifies each extract's free-text identity
-    fields before they reach the model. ``account_holder`` is in that redactable set and no
-    deterministic check reads it, so the fixture proves that call site without moving
-    validation_recall / precision. A PII case with no bank statement to carry it raises
-    rather than silently proving only the audit path.
+    fields before they reach the model.
+
+    ``account_holder`` goes on the bank statement: it is in the redactable set and no
+    deterministic check reads it, so it proves the call site on a field nothing else depends
+    on. A PII case with no bank statement to carry it raises rather than silently proving
+    only the audit path.
+
+    ``name`` and ``address`` carry the same identifier wherever a document declares them,
+    which is the half that must agree with :func:`_with_pii`. These two fields ARE read, by
+    NAME_MATCH and ADDRESS_MATCH, and a document identity that omitted what the applicant's
+    carries would make the two checks disagree by construction on cases marked consistent.
     """
     if not case.pii_in_inputs:
         return by_doc_id
-    label, value = _PII_BY_JURISDICTION[case.jurisdiction.upper()]
+    fixture = _pii_fixture(case)
+    label, value = fixture
     planted = dict(by_doc_id)
     statements = [
         doc_id for doc_id, extract in planted.items() if extract.doc_type is DocType.BANK_STATEMENT
@@ -464,10 +490,14 @@ def _with_pii_extracts(
             "extract to plant an account_holder on, so the extract-redaction call site "
             "would go unproven. Add one."
         )
-    for doc_id in statements:
-        extract = planted[doc_id]
+    for doc_id, extract in planted.items():
         fields = dict(extract.fields)
-        fields["account_holder"] = f"{label} {value}, account {_ACCOUNT_FIXTURE}"
+        if doc_id in statements:
+            fields["account_holder"] = f"{label} {value}, account {_ACCOUNT_FIXTURE}"
+        if fields.get("name") and fields.get("address"):
+            fields["name"], fields["address"] = _planted_identity(
+                fields["name"], fields["address"], fixture
+            )
         planted[doc_id] = replace(extract, fields=fields)
     return planted
 

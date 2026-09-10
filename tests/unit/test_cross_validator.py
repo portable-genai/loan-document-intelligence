@@ -8,9 +8,13 @@ enters this path so the verdicts are reproducible.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 from tests.fixtures import sample_docs
 
+from loan_doc_intel.adapters.local.redaction import LocalRegexRedactionAdapter
+from loan_doc_intel.config import PiiSettings, Settings
 from loan_doc_intel.domain.cross_validator import CrossValidator
 from loan_doc_intel.domain.models import CheckKind, CheckStatus
 
@@ -110,6 +114,62 @@ def test_validator_is_deterministic_for_identical_inputs_and_policy():
     first = validator.validate(sample_docs.consistent_extracts(), sample_docs.APPLICANT)
     second = validator.validate(sample_docs.consistent_extracts(), sample_docs.APPLICANT)
     assert first == second
+
+
+# --------------------------------------------------------------------------- #
+# NAME_MATCH / ADDRESS_MATCH compare like with like, and never the applicant with itself.
+# --------------------------------------------------------------------------- #
+_NRIC = "S1234567A"  # FICTIONAL; a valid checksum, so the SG row masks it
+
+
+def _sg_redactor() -> LocalRegexRedactionAdapter:
+    return LocalRegexRedactionAdapter(Settings(pii=PiiSettings(jurisdictions=("SG",))))
+
+
+def test_a_masked_document_name_is_compared_with_the_masked_applicant_name():
+    # The service's shape: every document extract masked before validation (P-04), the
+    # applicant record raw, and both carrying the same identifier.
+    redactor = _sg_redactor()
+    applicant = replace(sample_docs.APPLICANT, name=f"{sample_docs.APPLICANT.name}, NRIC {_NRIC}")
+    extracts = [
+        replace(e, fields={**e.fields, "name": redactor.redact(applicant.name).text})
+        for e in sample_docs.consistent_extracts()
+    ]
+    assert all(_NRIC not in e.fields["name"] for e in extracts)
+
+    masked_vs_raw = CrossValidator().validate(extracts, applicant)
+    masked_vs_masked = CrossValidator(redaction=redactor).validate(extracts, applicant)
+
+    # Masked against raw is a false FAIL on a consistent application.
+    assert _by_kind(masked_vs_raw)[CheckKind.NAME_MATCH].status is CheckStatus.FAIL
+    # Masked against masked compares real document values, and they agree. The documents'
+    # values are masked twice here, so this also pins that masking is idempotent.
+    name = _by_kind(masked_vs_masked)[CheckKind.NAME_MATCH]
+    assert name.status is CheckStatus.PASS
+    assert len(name.citations) == len(extracts)
+
+
+def test_binding_the_redactor_changes_nothing_when_neither_side_was_redacted():
+    # Both sides go through the redactor, so a caller that redacted neither (the /validate
+    # endpoint, the CLI) gets the same verdicts with it bound or not, planted mismatches included.
+    for extracts in (sample_docs.consistent_extracts(), sample_docs.inconsistent_extracts()):
+        bound = CrossValidator(redaction=_sg_redactor()).validate(extracts, sample_docs.APPLICANT)
+        assert bound == CrossValidator().validate(extracts, sample_docs.APPLICANT)
+
+
+def test_a_field_no_document_carries_is_a_warn_not_a_pass_on_the_applicant_alone():
+    extracts = [
+        replace(e, fields={k: v for k, v in e.fields.items() if k != "name"})
+        for e in sample_docs.consistent_extracts()
+    ]
+    result = CrossValidator().validate(extracts, sample_docs.APPLICANT)
+    name = _by_kind(result)[CheckKind.NAME_MATCH]
+    # The applicant declared a name and no document carried one. A set of one used to PASS,
+    # having compared the applicant with itself and cited nothing.
+    assert name.status is CheckStatus.WARN
+    assert name.citations == ()
+    # LOW severity: the check says it compared nothing without failing the application.
+    assert result.passed is True
 
 
 if __name__ == "__main__":  # pragma: no cover

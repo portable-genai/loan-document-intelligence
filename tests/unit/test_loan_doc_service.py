@@ -14,12 +14,17 @@ These tests use only in-memory fakes (no Google Cloud SDK).
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 from tests.conftest import BlockingGuardrail
 from tests.fixtures import sample_docs
 
+from loan_doc_intel.domain.cross_validator import CrossValidator
 from loan_doc_intel.domain.identity import Principal
 from loan_doc_intel.domain.models import (
+    CheckKind,
+    CheckStatus,
     Decision,
     Direction,
     LoanApplicationCase,
@@ -170,6 +175,44 @@ def test_only_extracted_documents_are_cited(loan_doc_service):
     extracted_ids = {e.document_id for e in case.extracts}
     for figure in case.income.income_figures:
         assert figure.source_doc_id in extracted_ids
+
+
+# --------------------------------------------------------------------------- #
+# NAME_MATCH compares like with like: the service binds its redactor onto the validator.
+# --------------------------------------------------------------------------- #
+def test_a_supplied_validator_compares_masked_names_with_masked_names(
+    extraction, llm, guardrail, redaction, tracer, audit, entitlements
+):
+    from tests.conftest import load_service
+
+    # Applicant and documents carry the SAME identity, NRIC included. The pipeline masks the
+    # documents' copies before validation and holds the applicant record raw.
+    nric = "S1234567A"
+    applicant = replace(sample_docs.APPLICANT, name=f"{sample_docs.APPLICANT.name}, NRIC {nric}")
+    extraction.seed(
+        [
+            replace(e, fields={**e.fields, "name": applicant.name})
+            for e in sample_docs.consistent_extracts()
+        ]
+    )
+    # Supplied the way api/deps.py supplies one: reviewed thresholds and no redactor.
+    service = load_service("LoanDocService")(
+        extraction,
+        llm,
+        guardrail,
+        redaction,
+        tracer,
+        audit,
+        entitlements,
+        validator=CrossValidator(amount_tolerance=0.07),
+    )
+    case = service.process(applicant, list(sample_docs.DOCUMENTS), PRINCIPAL)
+
+    assert all(nric not in e.fields["name"] for e in case.extracts)
+    assert case.validation is not None
+    name_match = {c.kind: c for c in case.validation.checks}[CheckKind.NAME_MATCH]
+    # Masked against raw would FAIL this consistent application.
+    assert name_match.status is CheckStatus.PASS
 
 
 if __name__ == "__main__":  # pragma: no cover
