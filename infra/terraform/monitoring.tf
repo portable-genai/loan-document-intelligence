@@ -20,7 +20,7 @@ locals {
 }
 
 resource "google_monitoring_alert_policy" "security" {
-  for_each = local.security_signals
+  for_each = var.posture_alerts_enabled ? local.security_signals : {}
 
   project               = var.project_id
   display_name          = "loan-document-intelligence: ${each.key}"
