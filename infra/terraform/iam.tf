@@ -35,7 +35,8 @@ resource "google_project_iam_member" "runtime" {
 
 # Allow the runtime SA to use the CMEK key (CMEK does not cascade, P-09).
 resource "google_kms_crypto_key_iam_member" "runtime_cmek" {
-  crypto_key_id = google_kms_crypto_key.loan_doc.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.loan_doc[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.runtime.email}"
 }
