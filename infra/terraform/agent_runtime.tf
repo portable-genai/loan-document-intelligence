@@ -20,7 +20,7 @@ resource "google_cloud_run_v2_service" "api" {
 
   template {
     service_account = google_service_account.runtime.email
-    encryption_key  = google_kms_crypto_key.loan_doc.id
+    encryption_key  = one(google_kms_crypto_key.loan_doc[*].id)
 
     containers {
       image = var.api_image
@@ -51,7 +51,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
       env {
         name  = "LOAN_DOC_KMS_KEY"
-        value = google_kms_crypto_key.loan_doc.id
+        value = one(google_kms_crypto_key.loan_doc[*].id)
       }
       env {
         name  = "LOAN_DOC_IAP_AUDIENCE"

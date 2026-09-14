@@ -32,7 +32,7 @@ output "model_armor_template_id" {
 
 output "kms_crypto_key" {
   description = "Regional CMEK key : set as kms_key in settings.yaml."
-  value       = google_kms_crypto_key.loan_doc.id
+  value       = one(google_kms_crypto_key.loan_doc[*].id)
 }
 
 output "worm_log_bucket" {

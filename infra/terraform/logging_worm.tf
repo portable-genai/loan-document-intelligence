@@ -16,8 +16,11 @@ resource "google_logging_project_bucket_config" "audit_worm" {
   retention_days = var.retention_days
   locked         = var.lock_audit_bucket
 
-  cmek_settings {
-    kms_key_name = google_kms_crypto_key.loan_doc.id
+  dynamic "cmek_settings" {
+    for_each = var.cmek_enabled ? [1] : []
+    content {
+      kms_key_name = one(google_kms_crypto_key.loan_doc[*].id)
+    }
   }
 
   depends_on = [
