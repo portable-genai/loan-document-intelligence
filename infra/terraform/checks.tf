@@ -4,7 +4,7 @@ check "production_guardrails" {
       var.enable_org_policies &&
       var.enable_vpc_sc &&
       var.vpc_sc_enforce &&
-      var.lock_audit_bucket &&
+      var.worm_locked &&
       var.deletion_protection &&
       length(var.alert_notification_channels) > 0 &&
       trimspace(var.iap_jwt_audience) != ""

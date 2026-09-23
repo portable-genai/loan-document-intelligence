@@ -14,7 +14,7 @@ resource "google_logging_project_bucket_config" "audit_worm" {
   location       = var.region # asia-southeast1 : in-country audit storage (P-03)
   bucket_id      = "loan-document-intelligence-worm"
   retention_days = var.retention_days
-  locked         = var.lock_audit_bucket
+  locked         = var.worm_locked
 
   dynamic "cmek_settings" {
     for_each = var.cmek_enabled ? [1] : []
