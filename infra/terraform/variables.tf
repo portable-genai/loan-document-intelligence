@@ -64,10 +64,9 @@ variable "retention_days" {
   }
 }
 
-variable "lock_audit_bucket" {
-  description = "Irreversibly lock the audit bucket. Keep false for disposable demos; production requires true."
+variable "worm_locked" {
+  description = "Irreversibly lock the audit bucket. NO default: a plan refuses until the deployment states it. false keeps a disposable demo destroyable; production requires true."
   type        = bool
-  default     = false
 }
 
 variable "deletion_protection" {

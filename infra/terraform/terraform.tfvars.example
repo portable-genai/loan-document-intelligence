@@ -12,7 +12,7 @@ zone   = "asia-southeast1-a"
 
 # WORM audit retention. Default is ~7 years and the bucket lock is irreversible (P-08).
 retention_days = 2557
-lock_audit_bucket  = false # true only after retention approval; irreversible
+worm_locked         = false # stated, never defaulted; true only after retention approval (irreversible)
 deletion_protection = false # true in production
 
 # VPC Service Controls perimeter (P-03). When true, supply an Access Context Manager
