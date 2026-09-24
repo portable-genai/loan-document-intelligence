@@ -31,6 +31,29 @@ from ...config import Settings
 from ...domain.models import RedactionFinding, RedactionResult
 from ...domain.pii_patterns import patterns_for
 
+#: The phone rows (universal and SG) would take an eight-digit amount for a phone number:
+#: "a monthly salary of SGD 90000000" reached the model as "SGD [SG_PHONE]", which also broke
+#: the income figure the underwriter reads. A match directly after a currency code or symbol
+#: is an amount, so those rows leave it intact.
+_PHONE_INFO_TYPES = frozenset({"PHONE_NUMBER", "SG_PHONE"})
+_AFTER_A_CURRENCY = re.compile(
+    r"(?:[$€£¥]|\b(?:SGD|USD|HKD|AUD|JPY|EUR|GBP|CNY|CHF|S\$|US\$|HK\$|A\$))\s?$"
+)
+
+
+def _mask_phones(pattern: re.Pattern[str], info_type: str, text: str) -> tuple[str, int]:
+    """Mask the phone matches of ``pattern`` in ``text`` that are not an amount."""
+    count = 0
+
+    def _repl(match: re.Match[str]) -> str:
+        nonlocal count
+        if _AFTER_A_CURRENCY.search(match.string, 0, match.start()):
+            return match.group(0)
+        count += 1
+        return f"[{info_type}]"
+
+    return pattern.sub(_repl, text), count
+
 
 def _mask_validated(
     pattern: re.Pattern[str], info_type: str, validator: Callable[[str], bool], text: str
@@ -59,7 +82,11 @@ class LocalRegexRedactionAdapter:
         findings: list[RedactionFinding] = []
         redacted = text
         for info_type, pattern, validator in self._patterns:
-            if validator is None:
+            if info_type in _PHONE_INFO_TYPES and validator is None:
+                redacted, count = _mask_phones(pattern, info_type, redacted)
+                if count:
+                    findings.append(RedactionFinding(info_type=info_type, count=count))
+            elif validator is None:
                 hits = pattern.findall(redacted)
                 if hits:
                     redacted = pattern.sub(f"[{info_type}]", redacted)

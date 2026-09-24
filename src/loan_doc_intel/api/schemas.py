@@ -13,12 +13,15 @@ domain models, the ports, and the orchestration service : never on a concrete ad
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from ..domain import models as m
 from ..domain.serialization import to_jsonable
+
+#: The four outcomes of a human-review hand-off, as the API reports them.
+ReviewRoutingValue = Literal["routed", "failed", "off", "not_required"]
 
 
 # --------------------------------------------------------------------------- #
@@ -220,6 +223,11 @@ class LoanApplicationCaseResponse(BaseModel):
     income: IncomeSummaryModel | None = None
     requires_human_review: bool = True
     generated_at: str = ""
+
+    #: Redaction changed the application before the model saw it; the console says so.
+    input_redacted: bool = False
+    #: What happened to the human-review hand-off: routed, failed, off or not_required.
+    review_routing: ReviewRoutingValue = "not_required"
 
     @classmethod
     def from_domain(cls, case: m.LoanApplicationCase) -> LoanApplicationCaseResponse:

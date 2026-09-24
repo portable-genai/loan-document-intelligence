@@ -38,6 +38,7 @@ from ..domain.identity import Principal
 from ..domain.services import LoanDocService
 from ..ports.identity import VERIFIED
 from . import deps
+from .disclosure import disclose
 from .schemas import (
     AgentCardModel,
     CrossValidationResponse,
@@ -285,6 +286,8 @@ def process(
     request: ProcessRequest,
     principal: CurrentPrincipal,
     service: Annotated[LoanDocService, Depends(deps.get_loan_doc_service)],
+    redaction: deps.RequestRedaction,
+    routing: deps.RequestReviewRouter,
 ) -> LoanApplicationCaseResponse:
     """Process an application's documents into a cited income verification.
 
@@ -317,7 +320,9 @@ def process(
                 red_flags=("Request blocked by the safety guardrail.",),
             ),
         )
-    return LoanApplicationCaseResponse.from_domain(case)
+    return disclose(
+        LoanApplicationCaseResponse.from_domain(case), redaction=redaction, routing=routing
+    )
 
 
 @app.post("/v1/extract", response_model=ExtractModel, tags=["artifacts"])

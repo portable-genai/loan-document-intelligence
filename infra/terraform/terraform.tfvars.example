@@ -27,6 +27,14 @@ enable_org_policies = false
 iap_jwt_audience    = ""
 alert_notification_channels = []
 
+# Cheap runtime controls, on in the reference; say so rather than inheriting the default.
+# Rule R8: routing on requires the human-review-console an escalated case is routed to; with
+# review_routing_enabled = false, set human_review_url = "".
+guardrail_enabled      = true
+pii_redaction_enabled  = true
+review_routing_enabled = true
+human_review_url       = "https://review.fictional-bank.example"
+
 # Optional FinOps tagging.
 billing_account  = ""
 vpc_network_name = "loan-doc-vpc"

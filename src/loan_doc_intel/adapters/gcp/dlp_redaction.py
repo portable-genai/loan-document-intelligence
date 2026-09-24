@@ -62,7 +62,20 @@ _DEFAULT_INFO_TYPES: tuple[str, ...] = (
 # single identifier is not transformed twice under two names.
 _BUILTIN_EQUIVALENTS: frozenset[str] = frozenset({"EMAIL_ADDRESS", "PHONE_NUMBER"})
 
-_MASKING_CHAR = "#"
+# Tuned against false positives (runtime-control contract, 2026-09-24). A loan file names
+# lenders, employers, tax authorities and document types, and at POSSIBLE likelihood DLP could
+# take "Notice of Assessment" or "Standard Chartered" for a person and mask it, so the model
+# normalised income from text the applicant did not submit. Three changes: only LIKELY
+# findings are masked; a match is REPLACED with its info-type name rather than a run of mask
+# characters, so the model still reads the shape of the document; and a PERSON_NAME finding
+# containing this domain's own vocabulary is excluded.
+_MIN_LIKELIHOOD = "LIKELY"
+_DOMAIN_VOCABULARY_REGEX = (
+    r"(?i)\b(MAS|IRAS|CPF|HDB|IRD|ATO|NTA|Inland Revenue|Notice of Assessment|Payslip|"
+    r"Pay Slip|Bank Statement|Employment Letter|TDSR|MSR|LTV|DBS|POSB|OCBC|UOB|HSBC|Citibank|"
+    r"Standard Chartered|Maybank|Hang Seng|Bank of China|Pte|Ltd|Limited|Sdn Bhd|Holdings|"
+    r"Payroll|Salary|Bonus|Allowance)\b"
+)
 
 
 class DlpRedactionAdapter:
@@ -137,7 +150,9 @@ class DlpRedactionAdapter:
                 {
                     "info_type": {"name": info_type},
                     "regex": {"pattern": re2_pattern_for(info_type, pattern)},
-                    "likelihood": "POSSIBLE",
+                    # A national-id or account shape is a finding in its own right; it must
+                    # clear the LIKELY floor below or no identifier would ever be masked.
+                    "likelihood": "VERY_LIKELY",
                 }
             )
         return custom
@@ -147,13 +162,27 @@ class DlpRedactionAdapter:
         return {
             "info_types": [{"name": name} for name in _DEFAULT_INFO_TYPES],
             "custom_info_types": self._custom_info_types(),
-            "min_likelihood": "POSSIBLE",
+            "rule_set": [
+                {
+                    "info_types": [{"name": "PERSON_NAME"}],
+                    "rules": [
+                        {
+                            "exclusion_rule": {
+                                "regex": {"pattern": _DOMAIN_VOCABULARY_REGEX},
+                                "matching_type": "MATCHING_TYPE_PARTIAL_MATCH",
+                            }
+                        }
+                    ],
+                }
+            ],
+            "min_likelihood": _MIN_LIKELIHOOD,
             "include_quote": False,
         }
 
     def _inline_deidentify_config(self) -> dict[str, Any]:
-        # Mask every detected info type (built-in + the custom types) with a single masking
-        # character : irreversible, no surrogate to reverse. Custom names are de-duplicated
+        # Replace every detected info type (built-in + the custom types) with its name, e.g.
+        # "[PERSON_NAME]": irreversible, and the model still reads the document. Custom names
+        # are de-duplicated
         # because one info type may be declared under several shapes (HK's two HKID forms),
         # and a transformation names an info type once.
         # verify: https://cloud.google.com/dlp/docs/reference/rest/v2/DeidentifyConfig
@@ -168,11 +197,7 @@ class DlpRedactionAdapter:
                 "transformations": [
                     {
                         "info_types": all_info_types,
-                        "primitive_transformation": {
-                            "character_mask_config": {
-                                "masking_character": _MASKING_CHAR,
-                            }
-                        },
+                        "primitive_transformation": {"replace_with_info_type_config": {}},
                     }
                 ]
             }

@@ -85,13 +85,17 @@ def process_application(
       actor: Authenticated underwriter / service identity for the audit trail.
 
     Returns:
-      A JSON-safe ``LoanApplicationCase`` dict.
+      A JSON-safe ``LoanApplicationCase`` dict, plus ``review_routing``: whether the case was
+      sent to the review console (``routed``), could not be (``failed``), or routing is
+      switched off (``off``).
     """
+    from ..adapters.controls import RecordingReviewRouter
     from ..domain.models import Applicant
     from ..domain.serialization import to_jsonable
     from ..domain.services import LoanDocService
 
     c = _container(settings)
+    routing = RecordingReviewRouter(c.review_router)
     service = LoanDocService(
         extraction=c.extraction,
         llm=c.llm,
@@ -100,11 +104,13 @@ def process_application(
         tracer=c.tracer,
         audit=c.audit,
         entitlements=c.entitlements,
-        review_router=c.review_router,
+        review_router=routing,
     )
     applicant = Applicant(id=application_id, name=applicant_name)
     case = service.process(applicant, _documents_from(documents), _principal(actor))
-    return to_jsonable(case)
+    payload: dict[str, Any] = to_jsonable(case)
+    payload["review_routing"] = routing.outcome.value
+    return payload
 
 
 def extract_document(

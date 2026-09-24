@@ -45,6 +45,12 @@ lock, enable deletion protection, configure IAP, and attach at least one alert c
 Terraform refuses production mode unless all of those choices are explicit. Images must be
 pinned by `@sha256:` digest; the release workflow publishes the reviewed API and UI digests.
 
+The service's cheap runtime controls are stated, not inherited: `guardrail_enabled`,
+`pii_redaction_enabled` and `review_routing_enabled` (default `true`) set `LOAN_DOC_GUARDRAIL`,
+`LOAN_DOC_PII_REDACTION` and `LOAN_DOC_REVIEW_ROUTING`. `human_review_url` has no default: with
+routing on it must name the `human-review-console` (`https://...`), because the service refuses
+to boot without one; with `review_routing_enabled = false` set it to `""`.
+
 After apply, copy the outputs (`document_ai_processor_id`, `dlp_inspect_template`,
 `dlp_deidentify_template`, `kms_crypto_key`) into the matching keys in
 `config/settings.yaml` (or the corresponding `LOAN_DOC_*` environment variables).
