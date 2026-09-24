@@ -251,3 +251,31 @@ variable "cmek_enabled" {
     the right answer: the stores it bound stay bound.
   EOT
 }
+
+variable "guardrail_enabled" {
+  description = "Switch the input and output guardrail (LOAN_DOC_GUARDRAIL). A cheap runtime control: on in the reference, reversible, so it takes a default."
+  type        = bool
+  default     = true
+}
+
+variable "pii_redaction_enabled" {
+  description = "Switch PII redaction (LOAN_DOC_PII_REDACTION). A cheap runtime control: on in the reference, reversible, so it takes a default."
+  type        = bool
+  default     = true
+}
+
+variable "review_routing_enabled" {
+  description = "Switch review routing to the human-review-console (LOAN_DOC_REVIEW_ROUTING). A cheap runtime control: on in the reference, reversible, so it takes a default."
+  type        = bool
+  default     = true
+}
+
+variable "human_review_url" {
+  description = "Base URL of the human-review-console an escalated case is routed to (rule R8). No default: a deployment names its console, or states routing off and sets this to \"\"."
+  type        = string
+
+  validation {
+    condition     = !var.review_routing_enabled || can(regex("^https://", var.human_review_url))
+    error_message = "review_routing_enabled requires human_review_url (rule R8): the service refuses to boot with routing on and no console named. Name one, or set review_routing_enabled = false."
+  }
+}

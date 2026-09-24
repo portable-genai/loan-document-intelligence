@@ -51,6 +51,43 @@ that profile proves the exit boundary, not a completed sovereign deployment.
    deploy snippet in `src/loan_doc_intel/agent/root_agent.py`), then set
    `agent_engine.resource_name` in settings.
 
+## Runtime controls
+
+`LOAN_DOC_GUARDRAIL`, `LOAN_DOC_PII_REDACTION` and `LOAN_DOC_REVIEW_ROUTING` each switch one
+cheap control: the guardrail port (Model Armor under `gcp`, `agent-guardrail-gateway` under
+`platform`, the heuristic locally), the redaction port (DLP under `gcp`, the gateway under
+`platform`, regex locally) and the review hand-off to `human-review-console`. Each is read once
+at startup in three states: unset is on, `true`/`false` (or `on`/`off`, `1`/`0`, `yes`/`no`)
+wins, and an emptied or unrecognised value refuses to boot, naming the variable. Off binds an
+adapter that does nothing, and a process with any control off logs one warning at startup
+naming each. Terraform sets all three on the Cloud Run service from `guardrail_enabled`,
+`pii_redaction_enabled` and `review_routing_enabled` (default `true`), and `HUMAN_REVIEW_URL`
+from `human_review_url`, which it requires while routing is on.
+
+Under `gcp` or `platform`, a control that is on must be able to work, so the process refuses to
+boot when:
+
+- review routing is on and `HUMAN_REVIEW_URL` is not set. Name the console, or set
+  `LOAN_DOC_REVIEW_ROUTING=off` to run without routing. Unsetting `HUMAN_REVIEW_URL` does not
+  pause routing; the switch does.
+- the guardrail is on, bound to Model Armor, and the template id is empty. Name one, or set
+  `LOAN_DOC_GUARDRAIL=off`.
+
+What the controls did is on the case a user reads. `POST /v1/process` carries
+`review_routing`: `routed` (the console accepted the case), `failed` (the hand-off failed and
+the case is NOT in the console; logged at WARNING with the exception type, and the response
+still returns), `off` (routing is switched off) or `not_required`; the agent's
+`process_application` tool and the CLI's `process` command report the same value. It also
+carries `input_redacted: true` when redaction changed the application before the model saw it.
+The console shows both beside the human-review banner.
+
+The DLP inspect config (inline, and the Terraform inspect template) masks only `LIKELY`
+findings and excludes loan-file vocabulary (tax authorities, lenders, document types,
+employer suffixes such as `Pte Ltd`) from `PERSON_NAME`; both the inline config and the
+Terraform de-identify template replace a match with its info-type name (`[PERSON_NAME]`)
+rather than a run of `#`. The local redactor leaves an eight-digit amount after a currency
+code (`SGD 90000000`) intact rather than masking it as a phone number.
+
 ## Residency and key rotation
 
 - **Region** is pinned to `asia-southeast1` everywhere; the Terraform `region` variable is
@@ -77,3 +114,9 @@ that profile proves the exit boundary, not a completed sovereign deployment.
   not a service failure.
 - **Onprem `NotImplementedError`** at runtime means a port is bound to a placeholder; check
   the active profile and the `adapters:` map.
+- **Boot fails: "Review routing is on under profile 'gcp' but HUMAN_REVIEW_URL is not set"**:
+  name the `human-review-console` base URL, or set `LOAN_DOC_REVIEW_ROUTING=off` to run
+  without routing.
+- **A case carries `review_routing: "failed"`**: the console was unreachable or refused the
+  hand-off and the case is NOT queued for review. Read the WARNING "human-review hand-off
+  failed: <exception type>", fix the console or credentials, and re-run the case.

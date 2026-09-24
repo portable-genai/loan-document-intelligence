@@ -61,6 +61,30 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "LOAN_DOC_FRAME_ANCESTORS"
         value = join(" ", sort(tolist(var.frame_ancestors)))
       }
+      # The cheap runtime controls, stated rather than inherited: on in the reference, and off
+      # is a deployment choice the service logs at startup.
+      env {
+        name  = "LOAN_DOC_GUARDRAIL"
+        value = tostring(var.guardrail_enabled)
+      }
+      env {
+        name  = "LOAN_DOC_PII_REDACTION"
+        value = tostring(var.pii_redaction_enabled)
+      }
+      env {
+        name  = "LOAN_DOC_REVIEW_ROUTING"
+        value = tostring(var.review_routing_enabled)
+      }
+      # Rule R8: the console an escalated case is routed to. Set only when it carries a value:
+      # the service reads it in three states and refuses an emptied one, and with routing on it
+      # refuses to boot without one (variables.tf validates the same).
+      dynamic "env" {
+        for_each = trimspace(var.human_review_url) != "" ? [1] : []
+        content {
+          name  = "HUMAN_REVIEW_URL"
+          value = var.human_review_url
+        }
+      }
       dynamic "env" {
         for_each = length(var.cors_origins) > 0 ? [1] : []
         content {

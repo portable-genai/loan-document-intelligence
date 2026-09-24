@@ -27,7 +27,7 @@ resource "google_data_loss_prevention_inspect_template" "applicant_pii" {
       info_type {
         name = "SG_NRIC_FIN"
       }
-      likelihood = "POSSIBLE"
+      likelihood = "VERY_LIKELY" # a shape match must clear the LIKELY floor below
       regex {
         pattern = "[STFGM][0-9]{7}[A-Z]"
       }
@@ -37,19 +37,38 @@ resource "google_data_loss_prevention_inspect_template" "applicant_pii" {
       info_type {
         name = "BANK_ACCOUNT_NUMBER"
       }
-      likelihood = "POSSIBLE"
+      likelihood = "VERY_LIKELY" # a shape match must clear the LIKELY floor below
       regex {
         pattern = "[0-9]{3}-[0-9]{6}-[0-9]"
       }
     }
 
-    min_likelihood = "POSSIBLE"
+    # Tuned against false positives (runtime-control contract, 2026-09-24): a loan file names
+    # lenders, employers, tax authorities and document types, which POSSIBLE took for people.
+    # Only LIKELY findings are masked, and a PERSON_NAME finding containing this domain's
+    # vocabulary is excluded. Keep the pattern in step with adapters/gcp/dlp_redaction.py.
+    rule_set {
+      info_types {
+        name = "PERSON_NAME"
+      }
+      rules {
+        exclusion_rule {
+          matching_type = "MATCHING_TYPE_PARTIAL_MATCH"
+          regex {
+            pattern = "(?i)\\b(MAS|IRAS|CPF|HDB|IRD|ATO|NTA|Inland Revenue|Notice of Assessment|Payslip|Pay Slip|Bank Statement|Employment Letter|TDSR|MSR|LTV|DBS|POSB|OCBC|UOB|HSBC|Citibank|Standard Chartered|Maybank|Hang Seng|Bank of China|Pte|Ltd|Limited|Sdn Bhd|Holdings|Payroll|Salary|Bonus|Allowance)\\b"
+          }
+        }
+      }
+    }
+
+    min_likelihood = "LIKELY"
   }
 
   depends_on = [google_project_service.required]
 }
 
-# De-identify template : mask every detected info type (irreversible character mask).
+# De-identify template : replace every detected info type with its name, e.g. "[PERSON_NAME]"
+# (irreversible, and the model still reads the shape of the document).
 resource "google_data_loss_prevention_deidentify_template" "applicant_pii" {
   parent       = "projects/${var.project_id}/locations/${var.region}"
   display_name = "loan-document-intelligence-deidentify"
@@ -59,9 +78,7 @@ resource "google_data_loss_prevention_deidentify_template" "applicant_pii" {
     info_type_transformations {
       transformations {
         primitive_transformation {
-          character_mask_config {
-            masking_character = "#"
-          }
+          replace_with_info_type_config = true
         }
       }
     }

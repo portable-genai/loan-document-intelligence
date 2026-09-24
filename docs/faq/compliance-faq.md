@@ -13,7 +13,10 @@ returns `True` (maker-checker, P-06): the underwriter decides, the agent verifie
 signals (an INCONSISTENT verdict, a failed affordability check, a declining-balance red flag)
 only *raise* the review bar; they never lower it and never auto-execute. Escalated cases are
 **routed** to the sibling **`human-review-console` Human-Review & Maker-Checker Console** (rule R8), not left as
-a per-repo boolean.
+a per-repo boolean. Every case says what happened to that hand-off (`review_routing`: `routed`,
+`failed`, `off` or `not_required`), so a case that could not reach the console is never read as
+queued; a deployment can switch routing off with `LOAN_DOC_REVIEW_ROUTING=off`, and with it
+on a `gcp` or `platform` process refuses to start without `HUMAN_REVIEW_URL`.
 
 ### How is the work auditable / reproducible?
 

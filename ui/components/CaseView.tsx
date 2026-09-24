@@ -4,12 +4,13 @@ import type { LoanApplicationCase } from "../lib/types";
 import { CrossValidationView } from "./CrossValidationView";
 import { ExtractView } from "./ExtractView";
 import { IncomeSummaryView } from "./IncomeSummaryView";
-import { ReviewBanner } from "./ui";
+import { RedactionNotice, ReviewBanner } from "./ui";
 
 export function CaseView({ result }: { result: LoanApplicationCase }) {
   return (
     <div className="space-y-4">
-      {result.requires_human_review ? <ReviewBanner /> : null}
+      {result.requires_human_review ? <ReviewBanner routing={result.review_routing} /> : null}
+      {result.input_redacted ? <RedactionNotice /> : null}
       <div className="flex items-baseline justify-between">
         <h1 className="text-lg font-semibold text-ink-900">
           Application {result.id}

@@ -130,6 +130,8 @@ def test_a_verifying_binding_stands_the_guard_down(monkeypatch: pytest.MonkeyPat
         LOAN_DOC_PROFILE="gcp",
         LOAN_DOC_IAP_AUDIENCE="/projects/000/global/backendServices/000",
         S2S_TOKEN="s3cret",
+        # A managed process with review routing on names its console, or it refuses to boot.
+        HUMAN_REVIEW_URL="https://review.example.test",
     )
     assert _status(app, "/healthz", LAN_PEER) == 200
 

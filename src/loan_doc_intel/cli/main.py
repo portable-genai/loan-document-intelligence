@@ -126,6 +126,19 @@ def _fmt_citation(c: Any) -> str:
     return f"[{c.source_id}{field}{page}] {c.title}"
 
 
+def _echo_review_routing(routing: Any) -> None:
+    """Say what happened to the human-review hand-off, in the words the operator needs."""
+    from ..adapters.controls import REVIEW_ROUTING_TEXT, ReviewRouting
+
+    outcome = routing.outcome
+    color = typer.colors.GREEN if outcome is ReviewRouting.ROUTED else typer.colors.YELLOW
+    if outcome in (ReviewRouting.FAILED, ReviewRouting.OFF):
+        color = typer.colors.RED
+    typer.secho(
+        f"  human review hand-off: {outcome.value}. {REVIEW_ROUTING_TEXT[outcome]}", fg=color
+    )
+
+
 def _echo_review_banner(requires_review: bool) -> None:
     if requires_review:
         typer.secho(
@@ -189,19 +202,26 @@ def process(
     ),
 ) -> None:
     """Process an application's documents into a cited income verification."""
+    from ..adapters.controls import RecordingReviewRouter
     from ..api.schemas import ProcessRequest
 
+    routing: Any = None
+
     def _do() -> LoanApplicationCase:
+        nonlocal routing
         with open(application_file) as fh:
             payload = json.load(fh)
         request = ProcessRequest(**payload)
         applicant = request.application.to_domain()
         documents = [d.to_domain() for d in request.documents]
-        svc = _deps().build_loan_doc_service(_container())
+        container = _container()
+        routing = RecordingReviewRouter(container.review_router)
+        svc = _deps().build_loan_doc_service(container, review_router=routing)
         return svc.process(applicant, documents, _cli_principal())
 
     case = _run("process", _do)
     _print_case(case)
+    _echo_review_routing(routing)
 
 
 @app.command()
