@@ -28,12 +28,14 @@ iap_jwt_audience    = ""
 alert_notification_channels = []
 
 # Cheap runtime controls, on in the reference; say so rather than inheriting the default.
-# Rule R8: routing on requires the human-review-console an escalated case is routed to; with
-# review_routing_enabled = false, set human_review_url = "".
-guardrail_enabled      = true
-pii_redaction_enabled  = true
-review_routing_enabled = true
-human_review_url       = "https://review.fictional-bank.example"
+# Rule R8: routing on requires the human-review-console an escalated case is routed to, reached
+# through the portal's IAP edge (the console is an embedded app), and the IAP OAuth client id the
+# hand-off bearer is minted for; with review_routing_enabled = false, set both to "".
+guardrail_enabled         = true
+pii_redaction_enabled     = true
+review_routing_enabled    = true
+human_review_url          = "https://portal.fictional-bank.example/apps/human-review-console/api"
+human_review_iap_audience = "000000000000-replace-me.apps.googleusercontent.com"
 
 # Optional FinOps tagging.
 billing_account  = ""

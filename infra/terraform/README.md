@@ -49,7 +49,12 @@ The service's cheap runtime controls are stated, not inherited: `guardrail_enabl
 `pii_redaction_enabled` and `review_routing_enabled` (default `true`) set `LOAN_DOC_GUARDRAIL`,
 `LOAN_DOC_PII_REDACTION` and `LOAN_DOC_REVIEW_ROUTING`. `human_review_url` has no default: with
 routing on it must name the `human-review-console` (`https://...`), because the service refuses
-to boot without one; with `review_routing_enabled = false` set it to `""`.
+to boot without one; with `review_routing_enabled = false` set it to `""`. Under `gcp` that
+console is an embedded app behind the portal's IAP edge, so `human_review_url` is
+`https://<edge-host>/apps/human-review-console/api`, and `human_review_iap_audience` (sets
+`HUMAN_REVIEW_IAP_AUDIENCE`) names the IAP OAuth client id the hand-off bearer is minted for.
+It is required while routing is on and refuses the backend-service path, which is
+`iap_jwt_audience`'s value, not a bearer audience.
 
 After apply, copy the outputs (`document_ai_processor_id`, `dlp_inspect_template`,
 `dlp_deidentify_template`, `kms_crypto_key`) into the matching keys in

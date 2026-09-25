@@ -16,7 +16,9 @@ only *raise* the review bar; they never lower it and never auto-execute. Escalat
 a per-repo boolean. Every case says what happened to that hand-off (`review_routing`: `routed`,
 `failed`, `off` or `not_required`), so a case that could not reach the console is never read as
 queued; a deployment can switch routing off with `LOAN_DOC_REVIEW_ROUTING=off`, and with it
-on a `gcp` or `platform` process refuses to start without `HUMAN_REVIEW_URL`.
+on a `gcp` or `platform` process refuses to start without `HUMAN_REVIEW_URL` (and, under
+`gcp`, without `HUMAN_REVIEW_IAP_AUDIENCE`, the IAP OAuth client id the hand-off bearer is
+minted for, because the deployed console is reached through the portal's IAP edge).
 
 ### How is the work auditable / reproducible?
 
