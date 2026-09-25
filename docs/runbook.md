@@ -61,15 +61,27 @@ at startup in three states: unset is on, `true`/`false` (or `on`/`off`, `1`/`0`,
 wins, and an emptied or unrecognised value refuses to boot, naming the variable. Off binds an
 adapter that does nothing, and a process with any control off logs one warning at startup
 naming each. Terraform sets all three on the Cloud Run service from `guardrail_enabled`,
-`pii_redaction_enabled` and `review_routing_enabled` (default `true`), and `HUMAN_REVIEW_URL`
-from `human_review_url`, which it requires while routing is on.
+`pii_redaction_enabled` and `review_routing_enabled` (default `true`), `HUMAN_REVIEW_URL`
+from `human_review_url` and `HUMAN_REVIEW_IAP_AUDIENCE` from `human_review_iap_audience`, both
+of which it requires while routing is on.
+
+**The review hand-off goes through the portal's IAP edge.** A deployed `human-review-console` is
+an embedded app behind the portal, so under `gcp` `HUMAN_REVIEW_URL` is
+`https://<edge-host>/apps/human-review-console/api` and `HUMAN_REVIEW_IAP_AUDIENCE` names the
+deployment's IAP OAuth client id. The router mints a Google-signed ID token for that audience
+with the service's own identity on every submission, in place of the static `S2S_TOKEN`. The
+console accepts it only if its `REVIEW_IAP_SERVICE_CALLERS_JSON` lists this service's account;
+otherwise it answers 403 and the case says `review_routing: "failed"`.
 
 Under `gcp` or `platform`, a control that is on must be able to work, so the process refuses to
 boot when:
 
-- review routing is on and `HUMAN_REVIEW_URL` is not set. Name the console, or set
-  `LOAN_DOC_REVIEW_ROUTING=off` to run without routing. Unsetting `HUMAN_REVIEW_URL` does not
+- review routing is on and `HUMAN_REVIEW_URL` is not set, or, under `gcp`, either it or
+  `HUMAN_REVIEW_IAP_AUDIENCE` is not set (the refusal names both). Name them, or set
+  `LOAN_DOC_REVIEW_ROUTING=off` to run without routing. Unsetting either variable does not
   pause routing; the switch does.
+- `HUMAN_REVIEW_IAP_AUDIENCE` is emptied, or holds the `/projects/.../backendServices/...` path
+  rather than the IAP OAuth client id (the edge refuses that path as a bearer audience).
 - the guardrail is on, bound to Model Armor, and the template id is empty. Name one, or set
   `LOAN_DOC_GUARDRAIL=off`.
 
@@ -114,9 +126,12 @@ code (`SGD 90000000`) intact rather than masking it as a phone number.
   not a service failure.
 - **Onprem `NotImplementedError`** at runtime means a port is bound to a placeholder; check
   the active profile and the `adapters:` map.
-- **Boot fails: "Review routing is on under profile 'gcp' but HUMAN_REVIEW_URL is not set"**:
-  name the `human-review-console` base URL, or set `LOAN_DOC_REVIEW_ROUTING=off` to run
-  without routing.
+- **Boot fails: "Review routing is on under profile 'gcp', which reaches the
+  human-review-console through the portal's IAP edge, so it needs both HUMAN_REVIEW_URL ... and
+  HUMAN_REVIEW_IAP_AUDIENCE"**: name the console's edge path and the IAP OAuth client id, or set
+  `LOAN_DOC_REVIEW_ROUTING=off` to run without routing.
+- **Boot fails: "HUMAN_REVIEW_IAP_AUDIENCE must be the IAP OAuth client id"**: the
+  backend-service path was pasted as the audience; use the OAuth client id.
 - **A case carries `review_routing: "failed"`**: the console was unreachable or refused the
   hand-off and the case is NOT queued for review. Read the WARNING "human-review hand-off
   failed: <exception type>", fix the console or credentials, and re-run the case.

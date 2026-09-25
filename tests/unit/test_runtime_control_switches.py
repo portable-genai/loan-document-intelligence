@@ -35,6 +35,7 @@ from loan_doc_intel.api.app import app
 from loan_doc_intel.cli.main import app as cli_app
 from loan_doc_intel.config import (
     GUARDRAIL_ENV,
+    HUMAN_REVIEW_IAP_AUDIENCE_ENV,
     HUMAN_REVIEW_URL_ENV,
     PII_REDACTION_ENV,
     REVIEW_ROUTING_ENV,
@@ -82,7 +83,7 @@ _PII_ADDRESS = "123 Imaginary Road, Singapore 000000; reach me at jordan@example
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (*_SWITCHES, HUMAN_REVIEW_URL_ENV):
+    for name in (*_SWITCHES, HUMAN_REVIEW_URL_ENV, HUMAN_REVIEW_IAP_AUDIENCE_ENV):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("LOAN_DOC_PROFILE", "local")
     monkeypatch.setenv("LOAN_DOC_LOCAL_AUDIT", ":memory:")
@@ -165,6 +166,7 @@ def test_routing_on_without_a_console_refuses_at_boot(
 def test_routing_on_with_a_console_loads(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOAN_DOC_PROFILE", "gcp")
     monkeypatch.setenv(HUMAN_REVIEW_URL_ENV, "https://review.example.test")
+    monkeypatch.setenv(HUMAN_REVIEW_IAP_AUDIENCE_ENV, "123456789-abc.apps.googleusercontent.com")
     assert Settings.load(_CONFIG).controls.review_routing is True
 
 

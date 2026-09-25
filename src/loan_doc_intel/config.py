@@ -278,11 +278,41 @@ REVIEW_ROUTING_ENV = "LOAN_DOC_REVIEW_ROUTING"
 #: networked profile while review routing is on, so a missing console is a named refusal
 #: rather than a hand-off that fails, silently, on every case.
 HUMAN_REVIEW_URL_ENV = "HUMAN_REVIEW_URL"
+#: The audience the portal's IAP edge accepts for a bearer: the deployment's IAP OAuth client
+#: id. A deployed human-review-console is an embedded app behind that edge, so the router mints
+#: a Google-signed ID token for this audience per submission. Required at boot under
+#: :data:`_IAP_PROFILE` while review routing is on; optional elsewhere, where it switches the
+#: router onto the minted bearer when named.
+HUMAN_REVIEW_IAP_AUDIENCE_ENV = "HUMAN_REVIEW_IAP_AUDIENCE"
+#: The networked profile whose review console is reached through the portal's IAP edge.
+_IAP_PROFILE = "gcp"
 
 #: The guardrail class that calls a Model Armor template, and so needs one named at boot.
 _MODEL_ARMOR_GUARDRAIL = "ModelArmorGuardrailAdapter"
 
 _log = logging.getLogger(__name__)
+
+
+def review_iap_audience() -> str | None:
+    """Resolve ``HUMAN_REVIEW_IAP_AUDIENCE`` in three states and refuse the one likely mistake.
+
+    Unset is ``None`` (no minted bearer; the router keeps the static-token path), emptied
+    refuses as an intent that names nothing, and a value is returned once it is not the
+    backend-service path. IAP compares its OWN assertion against
+    ``/projects/<n>/global/backendServices/<id>``, and a token minted for that path is refused at
+    the edge with nothing in this process able to tell why. The two values sit side by side in
+    a deployment record, so the mix-up is refused here by name rather than found as a 401.
+    """
+    value = optional_setting(HUMAN_REVIEW_IAP_AUDIENCE_ENV)
+    if value is None:
+        return None
+    if value.startswith("/projects/") or "/backendServices/" in value:
+        raise ValueError(
+            f"{HUMAN_REVIEW_IAP_AUDIENCE_ENV} must be the IAP OAuth client id, not the "
+            f"backend-service path {value!r}: IAP compares that path against its own assertion "
+            "and refuses it as a bearer audience."
+        )
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -615,12 +645,8 @@ def _refuse_unconfigured_controls(settings: Settings) -> None:
     if settings.profile not in _NETWORKED_PROFILES:
         return
     controls = settings.controls
-    if controls.review_routing and optional_setting(HUMAN_REVIEW_URL_ENV) is None:
-        raise ConfiguredEmptyError(
-            f"Review routing is on under profile {settings.profile!r} but {HUMAN_REVIEW_URL_ENV} "
-            f"is not set. Name the human-review-console base URL, or set "
-            f"{REVIEW_ROUTING_ENV}=off to run without routing."
-        )
+    if controls.review_routing:
+        _refuse_unreachable_console(settings.profile)
     guardrail = settings.adapters.get("guardrail", {}).get(settings.profile, "")
     if (
         controls.guardrail
@@ -630,6 +656,41 @@ def _refuse_unconfigured_controls(settings: Settings) -> None:
         raise ConfiguredEmptyError(
             f"The guardrail is on under profile {settings.profile!r} but no Model Armor "
             f"template is configured. Name one, or set {GUARDRAIL_ENV}=off."
+        )
+
+
+def _refuse_unreachable_console(profile: str) -> None:
+    """Review routing is on under a networked profile: the console must be reachable, by name.
+
+    Under :data:`_IAP_PROFILE` the deployed console sits behind the portal's IAP edge, which
+    accepts only a bearer minted for the IAP OAuth client id, so the console URL alone is not
+    enough: both variables are required and the refusal names both. Elsewhere the audience is
+    optional, but a named one is still checked, so a backend-service path refuses here too.
+    """
+    url = optional_setting(HUMAN_REVIEW_URL_ENV)
+    audience = review_iap_audience()
+    if profile == _IAP_PROFILE and (url is None or audience is None):
+        missing = [
+            name
+            for name, value in (
+                (HUMAN_REVIEW_URL_ENV, url),
+                (HUMAN_REVIEW_IAP_AUDIENCE_ENV, audience),
+            )
+            if value is None
+        ]
+        raise ConfiguredEmptyError(
+            f"Review routing is on under profile {profile!r}, which reaches the "
+            f"human-review-console through the portal's IAP edge, so it needs both "
+            f"{HUMAN_REVIEW_URL_ENV} (the edge path for the console) and "
+            f"{HUMAN_REVIEW_IAP_AUDIENCE_ENV} (the IAP OAuth client id); not set: "
+            f"{', '.join(missing)}. Name both, or set {REVIEW_ROUTING_ENV}=off to run without "
+            "routing."
+        )
+    if url is None:
+        raise ConfiguredEmptyError(
+            f"Review routing is on under profile {profile!r} but {HUMAN_REVIEW_URL_ENV} "
+            f"is not set. Name the human-review-console base URL, or set "
+            f"{REVIEW_ROUTING_ENV}=off to run without routing."
         )
 
 

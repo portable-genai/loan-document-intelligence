@@ -85,6 +85,17 @@ resource "google_cloud_run_v2_service" "api" {
           value = var.human_review_url
         }
       }
+      # The IAP OAuth client id the review hand-off bearer is minted for: the console is an
+      # embedded app behind the portal's IAP edge. Set only when it carries a value, for the
+      # same three-state reason as HUMAN_REVIEW_URL; with routing on the service refuses to
+      # boot without it (variables.tf validates the same).
+      dynamic "env" {
+        for_each = trimspace(var.human_review_iap_audience) != "" ? [1] : []
+        content {
+          name  = "HUMAN_REVIEW_IAP_AUDIENCE"
+          value = var.human_review_iap_audience
+        }
+      }
       dynamic "env" {
         for_each = length(var.cors_origins) > 0 ? [1] : []
         content {

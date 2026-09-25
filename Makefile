@@ -20,7 +20,7 @@ export LOAN_DOC_PROFILE := $(PROFILE)
 
 DEMO_OUT    := demo-out
 .DEFAULT_GOAL := help
-.PHONY: help install install-gcp fmt lint test eval check demo demo-selftest portability-demo \
+.PHONY: help install install-gcp lock fmt lint test eval check demo demo-selftest portability-demo \
         run-local run-api run-ui ui-install ui-check tf-plan clean
 
 help: ## Show this help.
@@ -32,6 +32,9 @@ install: ## Install the package + dev tooling (NO GCP SDK : local/test profile).
 
 install-gcp: ## Install with the managed-stack extra (google-adk, genai, documentai, ...).
 	$(PIP) install -e ".[gcp,dev]"
+
+lock: ## Recompile both lockfiles from pyproject.toml and restore the tag = commit headers.
+	$(PYTHON) scripts/lock.py
 
 fmt: ## Auto-format and auto-fix lint issues.
 	ruff format $(SRC) $(TESTS) eval

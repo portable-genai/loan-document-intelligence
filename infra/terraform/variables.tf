@@ -279,3 +279,18 @@ variable "human_review_url" {
     error_message = "review_routing_enabled requires human_review_url (rule R8): the service refuses to boot with routing on and no console named. Name one, or set review_routing_enabled = false."
   }
 }
+
+variable "human_review_iap_audience" {
+  description = "The audience the portal's IAP edge accepts for the review hand-off bearer: the deployment's IAP OAuth client id (HUMAN_REVIEW_IAP_AUDIENCE). The deployed console is an embedded app behind that edge, so the service mints an ID token for this audience per submission. NOT the /projects/.../backendServices/... path (that is iap_jwt_audience, for verifying inbound assertions). Required while review routing is on; \"\" when routing is stated off."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.review_routing_enabled || trimspace(var.human_review_iap_audience) != ""
+    error_message = "review_routing_enabled requires human_review_iap_audience: under gcp the service refuses to boot with routing on and no IAP OAuth client id to mint the console bearer for. Name it, or set review_routing_enabled = false."
+  }
+  validation {
+    condition     = !startswith(var.human_review_iap_audience, "/projects/") && !strcontains(var.human_review_iap_audience, "/backendServices/")
+    error_message = "human_review_iap_audience must be the IAP OAuth client id, not the backend-service path: IAP refuses that path as a bearer audience, and the service refuses it at boot."
+  }
+}
