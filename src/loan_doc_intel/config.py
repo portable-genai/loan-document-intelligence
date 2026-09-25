@@ -22,6 +22,7 @@ from typing import Any
 
 import yaml
 from hex_service_kit import EnvSetting
+from hex_service_kit.localmodel import LocalModelSettings
 
 from .domain import pii_patterns
 from .envread import (
@@ -37,9 +38,18 @@ _ENV_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)(?::-(.*?))?\}")
 _PROFILE_ENV = "LOAN_DOC_PROFILE"
 
 #: Every profile that binds an adapter family. ``local`` is the SDK-free offline stack,
+#: ``live`` is the same laptop stack with the fleet's shared local model on the model port,
 #: ``gcp`` and ``platform`` are the managed stacks, ``onprem`` is the fail-fast portability
 #: placeholder.
-RUNTIME_PROFILES = frozenset({"local", "gcp", "platform", "onprem"})
+RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
+
+#: The laptop profiles: both bind the seeded personas, the in-process stores and the local
+#: review outbox, so both take the laptop posture (loopback bind, localhost CORS origins).
+#: ``live`` differs from ``local`` only in which model answers.
+LAPTOP_PROFILES: frozenset[str] = frozenset({"local", "live"})
+
+#: The adapter class that answers under ``live``, so the banner can name its model.
+_LOCAL_MODEL_ADAPTER = "LocalModelLLMAdapter"
 
 #: The profile string handed to every INTERNET-FACING relaxation when ``LOAN_DOC_PROFILE``
 #: was never set. It is deliberately NOT a member of :data:`RUNTIME_PROFILES` and never reaches
@@ -475,7 +485,7 @@ _DOCUMENT_AI_MULTI_REGIONS = frozenset({"us", "eu"})
 class Settings:
     project_id: str = "your-gcp-project"
     region: str = "asia-southeast1"
-    profile: str = "local"  # local (SDK-free default) | gcp | platform | onprem
+    profile: str = "local"  # local (SDK-free default) | live | gcp | platform | onprem
     kms_key: str = ""  # projects/.../cryptoKeys/... (regional)
     models: ModelSettings = field(default_factory=ModelSettings)
     document_ai: DocumentAiSettings = field(default_factory=DocumentAiSettings)
@@ -609,6 +619,10 @@ class Settings:
         binding = str(table.get(self.profile, "") or "")
         if not binding:
             return "no-model"
+        if binding.endswith(f":{_LOCAL_MODEL_ADAPTER}"):
+            # The laptop ``live`` lane's shared local model: name the model the kit client will
+            # call (``LOCAL_MODEL``, else the fleet default), not the word "local".
+            return LocalModelSettings.from_env().model
         if self.profile not in _MANAGED_PROFILES:
             # The on-prem adapters are fail-fast migration placeholders: they raise rather than
             # generating, so naming a model would advertise one that never answers.

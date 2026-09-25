@@ -31,7 +31,7 @@ from hex_service_kit import (
 )
 from hex_service_kit.web import add_loopback_exposure_guard
 
-from ..config import end_user_auth_kind
+from ..config import LAPTOP_PROFILES, end_user_auth_kind
 from ..domain.entitlements import require_object_access
 from ..domain.errors import AccessDenied, GuardrailBlockedError
 from ..domain.identity import Principal
@@ -165,8 +165,10 @@ def _cors_origins() -> list[str]:
             [origin.strip() for origin in setting.value.split(",") if origin.strip()],
             _CORS_ORIGINS_ENV,
         )
+    # ``live`` is the same laptop stack as ``local``, so it takes the same dev-origin grant.
+    exposure = deps.get_settings().profile_choice.exposure_profile
     resolved = cors_allowlist(
-        deps.get_settings().profile_choice.exposure_profile,
+        "local" if exposure in LAPTOP_PROFILES else exposure,
         origins_env=_CORS_ORIGINS_ENV,
         dev_origins=tuple(_DEV_ORIGINS),
     )

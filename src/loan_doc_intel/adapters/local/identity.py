@@ -11,7 +11,7 @@ profile; secure mode uses the IAP adapter, which verifies a real assertion.
 
 from __future__ import annotations
 
-from ...config import Settings
+from ...config import LAPTOP_PROFILES, Settings
 from ...domain.identity import IdentityError, Principal, RequestContext
 from ...ports.identity import CLIENT_ASSERTED
 
@@ -64,11 +64,12 @@ class LocalPersonaProfileError(IdentityError):
 
 
 class LocalPersonaIdentityAdapter:
-    """Resolve a Principal from a seeded dev persona (local profile only, no auth).
+    """Resolve a Principal from a seeded dev persona (laptop profiles only, no auth).
 
     These personas are an UNAUTHENTICATED grant of the loan-analyst and loan-approver
-    entitlements, so this adapter refuses to construct unless the local profile was chosen
-    DELIBERATELY: the profile must be ``local`` AND (when the settings came from the
+    entitlements, so this adapter refuses to construct unless a laptop profile was chosen
+    DELIBERATELY: the profile must be ``local`` or ``live`` (the same stack with a real local
+    model) AND (when the settings came from the
     environment) ``LOAN_DOC_PROFILE`` or the settings file must actually have named it. A
     missing variable therefore fails closed instead of serving retail-lending underwriting
     with dev approvers.
@@ -80,9 +81,10 @@ class LocalPersonaIdentityAdapter:
     end_user_auth = CLIENT_ASSERTED
 
     def __init__(self, settings: Settings) -> None:
-        if settings.profile != "local":
+        if settings.profile not in LAPTOP_PROFILES:
+            allowed = ", ".join(sorted(LAPTOP_PROFILES))
             raise LocalPersonaProfileError(
-                "seeded dev personas are local-profile only; "
+                f"seeded dev personas are laptop-profile only ({allowed}); "
                 f"refusing to serve them under profile {settings.profile!r}"
             )
         if not settings.profile_explicit:
