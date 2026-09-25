@@ -48,8 +48,13 @@ RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
 #: ``live`` differs from ``local`` only in which model answers.
 LAPTOP_PROFILES: frozenset[str] = frozenset({"local", "live"})
 
-#: The adapter class that answers under ``live``, so the banner can name its model.
+#: The adapter class that answers under ``live``, so the model pill can name its model.
 _LOCAL_MODEL_ADAPTER = "LocalModelLLMAdapter"
+
+#: What the offline deterministic model adapter answers as. ``generator_model`` states it under
+#: ``local`` and the stub notes it when it answers, so the model pill names the same string
+#: before and after an answer, and never the Gemini id the stub's response echoes.
+STUB_GENERATOR_MODEL = "deterministic-offline-stub"
 
 #: The profile string handed to every INTERNET-FACING relaxation when ``LOAN_DOC_PROFILE``
 #: was never set. It is deliberately NOT a member of :data:`RUNTIME_PROFILES` and never reaches
@@ -105,24 +110,24 @@ def _validate_profile(profile: str) -> str:
     return profile
 
 
-#: Profiles that mean "running on managed cloud infrastructure", for the banner's runtime half.
+#: Profiles that mean "running on managed cloud infrastructure", for the model pill's runtime title.
 _MANAGED_PROFILES: frozenset[str] = frozenset({"gcp"})
 
 #: Profiles whose controls call a sibling or managed service over the network (both bind the
 #: platform review router), so a control that is on must be configured before the process
 #: serves. Wider than :data:`_MANAGED_PROFILES`, which answers where the process RUNS for the
-#: banner: ``platform`` delegates to siblings and needs a review console just the same.
+#: model pill: ``platform`` delegates to siblings and needs a review console just the same.
 _NETWORKED_PROFILES: frozenset[str] = frozenset({"gcp", "platform"})
 
-#: The port whose ACTIVE binding decides what the provenance banner's model half says.
-#: Named once here so rebinding it for a profile changes the banner in the same edit.
+#: The port whose ACTIVE binding decides what the model pill names before any answer.
+#: Named once here so rebinding it for a profile changes the pill in the same edit.
 _GENERATOR_PORT: str = "llm"
 
 #: Where this service's managed model id lives, as a dotted attribute path on ``Settings``, or
 #: the empty string when it keeps none there.
 #:
 #: Most of the fleet pins the id in its settings file rather than in the adapter, under a name
-#: chosen per repository. Resolving it from a path named ONCE here keeps the banner reading the
+#: chosen per repository. Resolving it from a path named ONCE here keeps the pill reading the
 #: same value the adapter passes to the model call, instead of a second copy that drifts.
 _GENERATOR_MODEL_ATTR: str = "models.reasoning"
 
@@ -135,21 +140,10 @@ _MODEL_CONSTANTS: tuple[str, ...] = ("_MODEL", "_DEFAULT_MODEL")
 def _model_from_settings(settings: object, path: str) -> str:
     """The model id at ``path``, or ``""`` when the deployment has not pinned one.
 
-    Honours the hard-reasoning opt-in where a repository has one. A deployment that flips
-    ``models.use_hard_reasoning`` sends reasoning-tier calls to the stronger model, so a banner
-    that kept naming ``models.reasoning`` would state a model the service is no longer calling.
+    ``path`` must name the setting the managed adapter itself reads for the model it calls.
+    There is deliberately no second, "harder" model a flag could swap in here: a resolver that
+    named a model the adapter never read would put a model on screen that never answered.
     """
-    models = getattr(settings, "models", None)
-    # Read through getattr into a local rather than touching `models.hard_reasoning` after the
-    # guard: `models` is deliberately untyped here (not every repo has one) so the checker
-    # cannot narrow it, and the attribute access is a real union-attr error.
-    hard_reasoning = getattr(models, "hard_reasoning", "")
-    if (
-        path == "models.reasoning"
-        and getattr(models, "use_hard_reasoning", False)
-        and hard_reasoning
-    ):
-        return str(hard_reasoning)
     value: object = settings
     for part in path.split("."):
         value = getattr(value, part, None)
@@ -267,8 +261,6 @@ class ModelSettings:
     location: str = "us"
     reasoning: str = "gemini-3.5-flash"
     triage: str = "gemini-3.5-flash"
-    hard_reasoning: str = "gemini-3.5-flash"  # Preview : feature-flagged off by default
-    use_hard_reasoning: bool = False
 
 
 @dataclass(frozen=True)
@@ -587,7 +579,7 @@ class Settings:
 
     @property
     def runtime(self) -> str:
-        """WHERE this process runs, as the UI banner states it: ``gcp`` or ``local``.
+        """WHERE this process runs, as the UI's model pill states it: ``gcp`` or ``local``.
 
         Derived from the profile, never sniffed from the environment. A console that read its
         runtime from ``window.location`` would be right until the day the deployment served
@@ -601,7 +593,11 @@ class Settings:
 
     @property
     def generator_model(self) -> str:
-        """WHICH model answers, as the UI banner states it (org decision, 2026-08-30).
+        """WHICH model the bound generator calls, as the UI's model pill first states it.
+
+        The pill shows this until an answer arrives, then the model that ANSWERED
+        (``X-Answered-By``, noted by the adapter itself). So this must be the model the adapter
+        calls: under ``gcp`` the setting its call reads, never a model a flag could swap in.
 
         These systems are demonstrated on a laptop and on a deployment, sometimes in the same
         hour, and a screenshot of one is indistinguishable from the other. A viewer who cannot
@@ -628,9 +624,9 @@ class Settings:
             # generating, so naming a model would advertise one that never answers.
             if self.profile == "onprem":
                 return "onprem-not-implemented"
-            return "deterministic-offline-stub"
+            return STUB_GENERATOR_MODEL
         # Managed. The id lives in settings in most of the fleet and on the adapter in a few,
-        # so both are read here and the banner never names a model the binding does not use.
+        # so both are read here and the pill never names a model the binding does not use.
         if _GENERATOR_MODEL_ATTR:
             named = _model_from_settings(self, _GENERATOR_MODEL_ATTR)
             if named:

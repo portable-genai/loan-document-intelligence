@@ -261,8 +261,9 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     profile: str = "local"
     region: str = "asia-southeast1"
-    #: Provenance the UI banner states on every page: where the runtime sits and which model
-    #: answers. Both are read off the service because the browser cannot know either.
+    #: What the UI's model pill states before any answer: where the runtime sits and which model
+    #: the bound generator calls. Derived server-side so the UI never guesses. Once a request is
+    #: answered, the pill shows that response's ``X-Answered-By`` instead.
     runtime: str = "local"  # "gcp" | "local"
     generator_model: str = "deterministic-offline-stub"
 

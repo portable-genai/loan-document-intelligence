@@ -37,6 +37,18 @@ open an issue first and make the case : do not bundle a contract change into a f
   **no** GCP SDK installed.
 - **Deterministic verdicts:** the `CrossValidator` owns every check outcome; the LLM may
   explain a check but must never change its status.
+- **Model ports note what answered and sample per call.** After a successful call the `gcp`
+  model adapter calls `hex_service_kit.provenance.note_model(<the model id it actually called>)`,
+  and `provenance.note_search()` when, and only when, an online search tool was attached to that
+  call; the `local` stub notes its own stub name (what `generator_model` reports under `local`).
+  `api/app.py` turns the notes into `X-Answered-By` / `X-Search-Used`, and the console's model
+  pills show them. `LlmRequest.temperature` is `float | None = None`, and an adapter OMITS it
+  when `None`: some models (Opus 5, Fable 5) reject the parameter, so free means absent, never
+  `1.0`. Pin `0.0` only where the output is extracted, classified, scored or compared against a
+  deterministic check (income normalisation, triage); leave drafting, narration and explanation
+  free. There is no second, harder model a flag can swap in: `generator_model` must be the model
+  the adapter calls. Held by `tests/unit/test_answer_provenance.py` and
+  `tests/unit/test_sampling_per_call.py`.
 - **Region pinned** to `asia-southeast1`. **Models pinned** to `gemini-3.5-flash` /
   `gemini-3.5-flash`. Never use the floating ADK default model or `gemini-2.0-flash`.
 - **No secrets in code.** Use env vars / `settings.yaml` interpolation.

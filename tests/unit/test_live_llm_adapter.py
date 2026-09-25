@@ -182,7 +182,7 @@ def test_live_takes_the_laptop_posture_seeded_personas_that_verify_nobody() -> N
     assert end_user_auth_kind(settings) != VERIFIED
 
 
-def test_the_banner_names_the_local_model_that_answers_under_live(
+def test_the_model_pill_names_the_local_model_that_answers_under_live(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     live = dataclasses.replace(Settings.load(CONFIG_PATH), profile="live")

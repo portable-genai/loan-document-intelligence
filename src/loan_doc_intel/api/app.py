@@ -29,7 +29,7 @@ from hex_service_kit import (
     read_env_setting,
     resolve_bind_host,
 )
-from hex_service_kit.web import add_loopback_exposure_guard
+from hex_service_kit.web import add_loopback_exposure_guard, install_answer_provenance
 
 from ..config import LAPTOP_PROFILES, end_user_auth_kind
 from ..domain.entitlements import require_object_access
@@ -215,6 +215,17 @@ async def _security_headers(request: Request, call_next: Any) -> Any:
     if legacy is not None:
         response.headers["X-Frame-Options"] = legacy
     return response
+
+
+# Which model answered: the model adapters note it as they call
+# (`hex_service_kit.provenance.note_model`) and this emits it as `X-Answered-By` on the same
+# response, with `X-Search-Used` when a call noted an online search tool (none here does). The
+# console's model pill reads those headers, so what it names is what answered, never what
+# configuration says would. A request that noted nothing sends neither, and the pill keeps
+# showing the configured `generator_model` from `/healthz`. The kit also lists both in
+# `Access-Control-Expose-Headers`, which is what lets the standalone console, on its own origin,
+# read them at all.
+install_answer_provenance(app)
 
 
 # A request arrives with nothing authenticating the END USER unless BOTH of these hold, and

@@ -326,6 +326,9 @@ class LoanDocService:
             user_content=user,
             model=None,  # adapter default => reasoning model gemini-3.5-flash
             response_schema=_FIGURES_SCHEMA,
+            # Pinned, not free: this is extraction. The figures it returns feed the
+            # deterministic cross-validator, so two runs of one case must be comparable.
+            temperature=0.0,
         )
         try:
             response = self._llm.generate(request)

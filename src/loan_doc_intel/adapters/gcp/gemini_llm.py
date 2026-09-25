@@ -9,9 +9,11 @@ Agent Platform** (Vertex backend) in ``asia-southeast1`` (Singapore). Reasoning 
 In B5 the model normalises extracted fields into income figures and explains
 discrepancies in prose : it never overrides a deterministic check verdict. The adapter
 maps the domain :class:`LlmRequest` onto ``client.models.generate_content`` (system
-instruction, temperature, max-output-tokens, a :class:`ThinkingConfig`, and
-structured-output config when a response schema is supplied), and maps ``usage_metadata``
-back onto :class:`TokenUsage`.
+instruction, temperature when the caller pinned one, max-output-tokens, a
+:class:`ThinkingConfig`, and structured-output config when a response schema is supplied), and
+maps ``usage_metadata`` back onto :class:`TokenUsage`. After a successful call it notes the
+model id it called, which the API emits as ``X-Answered-By`` for the console's model pill. No
+call here attaches an online search tool, so none notes a search.
 
 All Google Cloud / GenAI SDK imports are lazy so the on-prem / test profile imports this
 module without ``google-genai`` installed.
@@ -20,6 +22,8 @@ module without ``google-genai`` installed.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+
+from hex_service_kit import provenance
 
 from ...config import Settings
 from ...domain.models import (
@@ -74,6 +78,8 @@ class GeminiLLMAdapter:
             contents=contents,
             config=config,
         )
+        # What answered, for the console's model pill (X-Answered-By): the id this call used.
+        provenance.note_model(model)
 
         return LlmResponse(
             text=getattr(response, "text", "") or "",
@@ -106,6 +112,7 @@ class GeminiLLMAdapter:
             ),
         )
 
+        provenance.note_model(self._models.triage)
         raw = (getattr(response, "text", "") or "").strip()
         return self._match_label(raw, labels)
 
@@ -128,12 +135,15 @@ class GeminiLLMAdapter:
 
     def _build_config(self, request: LlmRequest, types: Any) -> Any:
         kwargs: dict[str, Any] = {
-            "temperature": request.temperature,
             "max_output_tokens": request.max_output_tokens,
             "thinking_config": types.ThinkingConfig(
                 thinking_level=self._thinking_level(request.thinking, types)
             ),
         }
+        # Omitted, not defaulted, when the caller left sampling free: some models reject the
+        # parameter outright, so "free" must mean absent rather than 1.0.
+        if request.temperature is not None:
+            kwargs["temperature"] = request.temperature
         if request.system_instruction:
             kwargs["system_instruction"] = request.system_instruction
         if request.response_schema is not None:

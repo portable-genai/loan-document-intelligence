@@ -112,7 +112,8 @@ code (`SGD 90000000`) intact rather than masking it as a phone number.
 
 ## Health and observability
 
-- `GET /healthz` reports `{status, profile, region}` for liveness/readiness.
+- `GET /healthz` reports `{status, profile, region, runtime, generator_model}` for
+  liveness/readiness; `X-Answered-By` on a model-backed response names the model that answered.
 - Trace spans carry no message content (P-09); applicant PII never reaches a span.
 - Audit records are written already redacted to the locked WORM bucket; query by the
   structured labels (`action`, `actor`, `decision`).

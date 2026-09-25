@@ -25,15 +25,20 @@ cd .. && loan-document-intelligence serve --port 8092
 
 ```
 app/         layout.tsx (sets `dynamic = "force-dynamic"`, required by the nonce CSP),
-             page.tsx (the process console), globals.css
+             page.tsx (the process console), globals.css,
+             ModelPills.tsx (top right: the model that answered the last request, and
+             Search when it searched; starts from /healthz's configured generator_model)
 components/  CaseView, CrossValidationView, IncomeSummaryView, ExtractView, ui primitives
 lib/         api.ts (the fetch client), types.ts (mirrors the API schemas),
+             answer-provenance.mjs (the one fetch wrapper that reads X-Answered-By /
+             X-Search-Used off responses from API_BASE),
              csp.mjs (THE policy module: the CSP, the three-state framing read, the refusals)
 proxy.ts     the ONLY emitter of the CSP and X-Frame-Options (Next 16's middleware file)
 next.config.mjs  no CSP here on purpose; it calls the two build-time refusals plus the
              static-expressible headers (nosniff, no-referrer)
 scripts/     assert-hydratable.mjs (starts the BUILT server and proves the page hydrates)
-tests/       csp.test.mjs (what a policy STRING can decide)
+tests/       csp.test.mjs (what a policy STRING can decide),
+             answer-provenance.test.mjs (what the pills may and may not name)
 ```
 
 The page sends a synthetic, clearly-fictional application to `POST /v1/process`. All applicant
