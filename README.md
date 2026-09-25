@@ -93,7 +93,7 @@ flowchart LR
 ```bash
 /opt/homebrew/bin/python3.14 -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"          # offline: no Google Cloud SDK
-export LOAN_DOC_PROFILE=local     # WORKING offline stack (or gcp / platform / onprem)
+export LOAN_DOC_PROFILE=local     # WORKING offline stack (or live / gcp / platform / onprem)
 
 ruff check src tests
 ruff format --check src tests
@@ -157,6 +157,7 @@ validation, **not** RAG over a corpus, so **R3 / `enterprise-knowledge-base` is 
 | Profile | Binds to |
 | --- | --- |
 | `local` (set `LOAN_DOC_PROFILE=local` deliberately; dev / test / CI) | A WORKING offline stack: local document parser, deterministic LLM, regex DLP, heuristic guardrail, append-only SQLite audit, in-process session/memory/registry. SDK-free; runs the whole pipeline on a laptop. Tests and CI run here. With the variable unset the same adapters bind, but as an unconsented run: no seeded personas and no localhost CORS grant. |
+| `live` (`LOAN_DOC_PROFILE=live`; laptop demo with a real model) | The `local` stack, except income normalisation calls the fleet's shared local open-weight model through `hex_service_kit.localmodel` (`LOCAL_MODEL_URL`, `LOCAL_MODEL`; start it with `python -m mlx_vlm.server --model mlx-community/gemma-4-31b-it-8bit --port 8001`). Same seeded personas, loopback bind and CORS grant as `local`. |
 | `gcp` (production sets `LOAN_DOC_PROFILE=gcp` explicitly) | Document AI, Gemini, Model Armor, DLP, Cloud Logging WORM, Cloud Trace, Gen AI eval. |
 | `platform` | HTTP clients to `agent-guardrail-gateway` / `agent-registry` / `model-quality-gate` / `agent-observability` (the rest fall back to `gcp`). |
 | `onprem` | SDK-free fail-fast placeholder adapters (the Google Distributed Cloud migration target): every method raises a clean exit-code-2 error. |

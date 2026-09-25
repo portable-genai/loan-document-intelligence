@@ -1,9 +1,11 @@
 # Loan / Mortgage Document Intelligence (B5) : runtime configuration.
 #
-# Three deployment profiles, selected by LOAN_DOC_PROFILE (or profile: below):
+# The deployment profiles, selected by LOAN_DOC_PROFILE (or profile: below):
 #   local  : a WORKING offline laptop stack (local document parser + deterministic LLM,
 #            append-only SQLite audit, SDK-free, no API key, no emulator). Default when
 #            LOAN_DOC_PROFILE is unset (dev / test / CI).
+#   live   : the local stack above, but income normalisation comes from the fleet's shared
+#            local open-weight model (hex_service_kit.localmodel; LOCAL_MODEL_URL / LOCAL_MODEL).
 #   gcp    : Google Cloud managed services (lazy SDK imports). Production sets
 #            LOAN_DOC_PROFILE=gcp explicitly.
 #   onprem : fail-fast Google Distributed Cloud migration placeholders.
@@ -17,7 +19,7 @@
 
 project_id: ${GOOGLE_CLOUD_PROJECT:-your-gcp-project}
 region: asia-southeast1            # Singapore : applicant PII data residency
-profile: ${LOAN_DOC_PROFILE:-}         # local | gcp | platform | onprem
+profile: ${LOAN_DOC_PROFILE:-}         # local | live | gcp | platform | onprem
 kms_key: ${LOAN_DOC_KMS_KEY:-}         # regional Cloud KMS key for CMEK
 
 models:
@@ -110,6 +112,7 @@ adapters:
     gcp: loan_doc_intel.adapters.gcp.iap_identity:IapIdentityAdapter
     platform: loan_doc_intel.adapters.gcp.iap_identity:IapIdentityAdapter
     local: loan_doc_intel.adapters.local.identity:LocalPersonaIdentityAdapter
+    live: loan_doc_intel.adapters.local.identity:LocalPersonaIdentityAdapter
     onprem: loan_doc_intel.adapters.onprem.identity:OnPremIdentityAdapter
   # Object-level authorization (C2). Identity resolves WHO; this resolves WHAT they may act on.
   # The application/document in the request body is client-controlled (spoofable), so its owner
@@ -122,66 +125,79 @@ adapters:
     gcp: loan_doc_intel.adapters.gcp.entitlements:GcpEntitlementsAdapter
     platform: loan_doc_intel.adapters.platform.remote_entitlements:RemoteEntitlementsAdapter
     local: loan_doc_intel.adapters.local.entitlements:LocalEntitlementsAdapter
+    live: loan_doc_intel.adapters.local.entitlements:LocalEntitlementsAdapter
     onprem: loan_doc_intel.adapters.onprem.entitlements:OnPremEntitlementsAdapter
   extraction:
     gcp: loan_doc_intel.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
     platform: loan_doc_intel.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
     local: loan_doc_intel.adapters.local.extraction:LocalExtractionAdapter
+    live: loan_doc_intel.adapters.local.extraction:LocalExtractionAdapter
     onprem: loan_doc_intel.adapters.onprem.extraction:OnPremExtractionAdapter
   llm:
     gcp: loan_doc_intel.adapters.gcp.gemini_llm:GeminiLLMAdapter
     platform: loan_doc_intel.adapters.gcp.gemini_llm:GeminiLLMAdapter
     local: loan_doc_intel.adapters.local.llm:LocalDeterministicLLMAdapter
+    live: loan_doc_intel.adapters.live.llm:LocalModelLLMAdapter
     onprem: loan_doc_intel.adapters.onprem.llm:OnPremLLMAdapter
   guardrail:
     gcp: loan_doc_intel.adapters.gcp.model_armor_guardrail:ModelArmorGuardrailAdapter
     local: loan_doc_intel.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
+    live: loan_doc_intel.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
     platform: loan_doc_intel.adapters.platform.remote_guardrail:RemoteGuardrailAdapter
     onprem: loan_doc_intel.adapters.onprem.guardrail:OnPremGuardrailAdapter
   redaction:
     gcp: loan_doc_intel.adapters.gcp.dlp_redaction:DlpRedactionAdapter
     local: loan_doc_intel.adapters.local.redaction:LocalRegexRedactionAdapter
+    live: loan_doc_intel.adapters.local.redaction:LocalRegexRedactionAdapter
     platform: loan_doc_intel.adapters.platform.remote_redaction:RemoteRedactionAdapter
     onprem: loan_doc_intel.adapters.onprem.redaction:OnPremRedactionAdapter
   agent_runtime:
     gcp: loan_doc_intel.adapters.gcp.agent_runtime:AgentRuntimeAdapter
     platform: loan_doc_intel.adapters.gcp.agent_runtime:AgentRuntimeAdapter
     local: loan_doc_intel.adapters.local.runtime:LocalAgentRuntimeAdapter
+    live: loan_doc_intel.adapters.local.runtime:LocalAgentRuntimeAdapter
     onprem: loan_doc_intel.adapters.onprem.runtime:OnPremAgentRuntimeAdapter
   session:
     gcp: loan_doc_intel.adapters.gcp.vertex_sessions:VertexSessionsAdapter
     platform: loan_doc_intel.adapters.gcp.vertex_sessions:VertexSessionsAdapter
     local: loan_doc_intel.adapters.local.session:LocalSessionAdapter
+    live: loan_doc_intel.adapters.local.session:LocalSessionAdapter
     onprem: loan_doc_intel.adapters.onprem.session:OnPremSessionAdapter
   memory:
     gcp: loan_doc_intel.adapters.gcp.vertex_memory_bank:VertexMemoryBankAdapter
     platform: loan_doc_intel.adapters.gcp.vertex_memory_bank:VertexMemoryBankAdapter
     local: loan_doc_intel.adapters.local.memory:LocalMemoryAdapter
+    live: loan_doc_intel.adapters.local.memory:LocalMemoryAdapter
     onprem: loan_doc_intel.adapters.onprem.memory:OnPremMemoryAdapter
   audit:
     gcp: loan_doc_intel.adapters.gcp.cloud_logging_audit:CloudLoggingAuditAdapter
     local: loan_doc_intel.adapters.local.audit:LocalAppendOnlyAuditAdapter
+    live: loan_doc_intel.adapters.local.audit:LocalAppendOnlyAuditAdapter
     platform: loan_doc_intel.adapters.platform.remote_audit:RemoteAuditAdapter
     onprem: loan_doc_intel.adapters.onprem.audit:OnPremAuditAdapter
   tracer:
     gcp: loan_doc_intel.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
     platform: loan_doc_intel.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
     local: loan_doc_intel.adapters.local.tracer:LocalNoopTracerAdapter
+    live: loan_doc_intel.adapters.local.tracer:LocalNoopTracerAdapter
     onprem: loan_doc_intel.adapters.onprem.tracer:OnPremTracerAdapter
   evaluation:
     gcp: loan_doc_intel.adapters.gcp.genai_eval:GenAiEvalAdapter
     local: loan_doc_intel.adapters.local.evaluation:LocalOfflineEvalAdapter
+    live: loan_doc_intel.adapters.local.evaluation:LocalOfflineEvalAdapter
     platform: loan_doc_intel.adapters.platform.remote_evaluation:RemoteEvaluationAdapter
     onprem: loan_doc_intel.adapters.onprem.evaluation:OnPremEvalAdapter
   registry:
     gcp: loan_doc_intel.adapters.gcp.a2a_registry:A2ARegistryAdapter
     local: loan_doc_intel.adapters.local.registry:LocalRegistryAdapter
+    live: loan_doc_intel.adapters.local.registry:LocalRegistryAdapter
     platform: loan_doc_intel.adapters.platform.remote_registry:RemoteRegistryAdapter
     onprem: loan_doc_intel.adapters.onprem.registry:OnPremRegistryAdapter
   tool_catalog:
     gcp: loan_doc_intel.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
     platform: loan_doc_intel.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
     local: loan_doc_intel.adapters.local.tool_catalog:LocalToolCatalogAdapter
+    live: loan_doc_intel.adapters.local.tool_catalog:LocalToolCatalogAdapter
     onprem: loan_doc_intel.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
   # review_router (rule R8): route a requires_human_review escalation to the human-review-console Human-Review
   # & Maker-Checker Console via the shared review-kit, not a per-repo boolean. local enqueues
@@ -191,4 +207,5 @@ adapters:
     gcp: loan_doc_intel.adapters.platform.review_router:PlatformReviewRouter
     platform: loan_doc_intel.adapters.platform.review_router:PlatformReviewRouter
     local: loan_doc_intel.adapters.local.review_router:LocalReviewRouter
+    live: loan_doc_intel.adapters.local.review_router:LocalReviewRouter
     onprem: loan_doc_intel.adapters.onprem.review_router:OnPremReviewRouter

@@ -41,6 +41,11 @@ def test_cors_fallback_only_under_local_profile(monkeypatch: pytest.MonkeyPatch)
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
+    # ``live`` is the same laptop stack with a real local model, so it gets the same grant.
+    assert _origins_for_profile(monkeypatch, "live") == [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
     # A secure deploy that forgets the allowlist gets NO cross-origin trust (was: dev
     # origins with credentials in every profile).
     assert _origins_for_profile(monkeypatch, "gcp") == []

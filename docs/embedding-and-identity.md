@@ -282,7 +282,7 @@ shape 1 the framed document is served same-origin through the proxy, so this hea
 
 | Variable | Side | Purpose |
 |----------|------|---------|
-| `LOAN_DOC_PROFILE` | backend | `local` \| `gcp` \| `platform` \| `onprem`. Selects the identity adapter (and the whole adapter set). |
+| `LOAN_DOC_PROFILE` | backend | `local` \| `live` \| `gcp` \| `platform` \| `onprem`. Selects the identity adapter (and the whole adapter set). |
 | `LOAN_DOC_IAP_AUDIENCE` | backend | The exact IAP-protected-resource path the backend verifies the assertion audience against. Required in `gcp`/`platform`. |
 | `LOAN_DOC_CORS_ORIGINS` | backend | Explicit origin allowlist for the cross-origin / standalone case (comma-separated). Never `"*"`. |
 | `LOAN_DOC_FRAME_ANCESTORS` | backend | CSP `frame-ancestors` allowlist: parent origins permitted to iframe the UI. Unset defaults to `'self'`; set-but-empty refuses at boot; `'none'` refuses all framing. |

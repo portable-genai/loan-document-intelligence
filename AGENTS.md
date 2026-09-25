@@ -16,7 +16,7 @@ Catalog id `loan-document-intelligence`. Income and bank-statement extraction + 
 | Catalog id | `loan-document-intelligence` |
 | Package | `src/loan_doc_intel/` |
 | Profile variable | `LOAN_DOC_PROFILE` |
-| Adapter families | `gcp`, `local`, `onprem`, `platform` |
+| Adapter families | `gcp`, `live`, `local`, `onprem`, `platform` |
 | Gate | `make check` |
 
 That variable is read in one module and resolved in three states: unset is no choice,
