@@ -80,8 +80,10 @@ def build_root_agent(settings: Settings | None = None) -> LlmAgent:
 
     tools: list[Any] = list(build_function_tools())
 
+    # No temperature: the agent narrates what its tools return, and the income figures and
+    # check verdicts are the tools' (normalisation pinned, cross-validation deterministic), so its
+    # sampling is left free (omitted, never 1.0, since some models reject the parameter).
     generate_content_config = types.GenerateContentConfig(
-        temperature=0.2,
         thinking_config=types.ThinkingConfig(thinking_budget=-1),
     )
 

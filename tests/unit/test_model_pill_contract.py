@@ -1,14 +1,17 @@
-"""The provenance the UI banner states must be true of the profile the service is running.
+"""What the UI's model pill states before any answer must be true of the running profile.
 
-Every served console names, at the top of every page, WHERE it is running and WHICH model
-answers (org decision, 2026-08-30). Both halves come from ``/healthz`` because the browser
-cannot know either: a console that read its runtime from ``window.location`` would be right
-until the day the deployment served through a proxy, and wrong silently after that.
+Every served console shows, at the top right of every page, a pill naming the model: the
+configured ``generator_model`` from ``/healthz`` (with WHERE it runs in its title) until an answer
+arrives, then the model that ANSWERED, from ``X-Answered-By`` (owner decision, 2026-09-23; the
+pills replaced the full-width provenance banner). Both starting values come from ``/healthz``
+because the browser cannot know either: a console that read its runtime from
+``window.location`` would be right until the day the deployment served through a proxy, and
+wrong silently after that. ``tests/unit/test_answer_provenance.py`` owns the answering half.
 
-The reason this is worth a test rather than a glance is what the banner is FOR. These systems
+The reason this is worth a test rather than a glance is what the pill is FOR. These systems
 are demonstrated on a laptop and on a deployment, sometimes in the same hour, and a screenshot
-of one is indistinguishable from the other. A banner that was merely present but wrong is worse
-than no banner: it converts "the viewer does not know" into "the viewer has been told the wrong
+of one is indistinguishable from the other. A pill that was merely present but wrong is worse
+than no pill: it converts "the viewer does not know" into "the viewer has been told the wrong
 thing", and the wrong thing here is whether a figure came from a managed model or from a
 deterministic offline stub.
 
@@ -59,7 +62,7 @@ def test_the_runtime_half_states_where_the_process_runs(profile: str) -> None:
 
 @pytest.mark.parametrize("profile", ["local", "gcp", "onprem"])
 def test_the_model_half_is_always_answered(profile: str) -> None:
-    """A blank is not an option: the banner renders nothing rather than render a falsehood."""
+    """A blank is not an option: the pill renders nothing rather than render a falsehood."""
     assert _for_profile(profile).generator_model.strip()
 
 
@@ -67,7 +70,7 @@ def test_the_model_half_is_always_answered(profile: str) -> None:
 def test_no_offline_profile_claims_a_managed_model(profile: str) -> None:
     """The defect that matters, stated as an assertion.
 
-    A laptop run naming a Gemini model is precisely the confusion the banner exists to remove,
+    A laptop run naming a Gemini model is precisely the confusion the pill exists to remove,
     and it is the one direction a reviewer cannot detect by looking at the page.
     """
     answer = _for_profile(profile).generator_model
@@ -94,7 +97,7 @@ def test_the_health_contract_carries_both_halves() -> None:
 
 
 def test_the_endpoint_answers_from_settings_rather_than_a_literal() -> None:
-    """A banner hard-coded at the endpoint would be right once and wrong after the next rebind.
+    """A pill value hard-coded at the endpoint would be right once and wrong after the next rebind.
 
     Both halves are properties of :class:`Settings`, so the values the endpoint sends are the
     values the profile implies; this pins that they are readable and non-empty together, which
@@ -155,92 +158,80 @@ def test_not_implemented_is_claimed_only_by_an_adapter_that_never_calls_a_model(
         )
 
 
-def test_the_banner_calls_a_base_this_console_actually_serves() -> None:
-    """The half of the contract that lives in the BROWSER, and the half that was broken.
+def test_the_pills_call_the_base_this_console_actually_serves() -> None:
+    """The half of the contract that lives in the BROWSER, and the half that was once broken.
 
-    Every assertion above is about the service: the profile implies a runtime, the schema carries
-    both fields, the endpoint answers from settings rather than a literal. All of it was true, and
-    green, for as long as the banner has existed -- while the banner rendered nothing at all, on
-    every page load, standalone and embedded. The service was never the defect.
-
-    The banner was fetching ``/api/agent/healthz``, the same-origin route handler the service
-    template ships. This console does not ship one; it calls its backend directly on
+    The banner the pills replaced fetched ``/api/agent/healthz``, the same-origin route handler
+    the service template ships. This console does not ship one; it calls its backend directly on
     ``NEXT_PUBLIC_API_BASE``. So the health call 404'd, took the failure branch, and the failure
-    branch renders nothing -- deliberately, because a banner that guessed would assert provenance
-    it does not have. A check that cannot fail loudly fails as an ABSENCE, and an absent strip is
-    exactly what no reviewer notices. That is why this assertion exists and a glance did not do.
+    branch renders nothing, deliberately, because a pill that guessed would assert provenance it
+    does not have. A check that cannot fail loudly fails as an ABSENCE, and an absent element is
+    exactly what no reviewer notices.
 
     Both architectures are legitimate, so this pins AGREEMENT rather than a literal: a tree with
-    ``ui/app/api/agent`` proxies through its own origin and the banner should name that path; a
-    tree without one must read the same base the rest of its console reads. The combination that
-    shipped -- naming the proxy while having none -- is the only one that is never right.
+    ``ui/app/api/agent`` proxies through its own origin and the pills should name that path; a
+    tree without one must read the same base the rest of its console reads, for ``/healthz`` and
+    for the answer headers alike.
     """
-    banner = Path("ui/app/ProvenanceBanner.tsx").read_text()
+    pills = Path("ui/app/ModelPills.tsx").read_text()
     proxies_through_own_origin = Path("ui/app/api/agent").is_dir()
 
-    assert ('"/api/agent"' in banner) == proxies_through_own_origin, (
-        "the banner names /api/agent but this console has no route handler at "
-        "ui/app/api/agent, so the health call reaches nothing and the banner renders nothing"
+    assert ('"/api/agent"' in pills) == proxies_through_own_origin, (
+        "the pills name /api/agent but this console has no route handler at "
+        "ui/app/api/agent, so the health call reaches nothing and the pills render nothing"
         if not proxies_through_own_origin
-        else "this console ships a /api/agent route handler but the banner does not use it"
+        else "this console ships a /api/agent route handler but the pills do not use it"
     )
 
     if not proxies_through_own_origin:
-        assert "API_BASE" in banner, (
-            "the banner must resolve its base the way the rest of the console does, through the "
-            "NEXT_PUBLIC_API_BASE reader in ui/lib/api.ts -- a second, independently spelled base "
-            "is how the two drift apart again"
+        assert "${API_BASE}/healthz" in pills, (
+            "the pills must resolve /healthz the way the rest of the console does, through the "
+            "NEXT_PUBLIC_API_BASE reader in ui/lib/api.ts"
+        )
+        assert "watchAnswers(window, API_BASE" in pills, (
+            "the answer headers must be read off responses from that same base, or a standalone "
+            "run's pill stays on the configured model forever"
         )
 
 
-def _first_px(block: str, property_name: str) -> int:
-    """The TOP value of a ``margin``/``padding`` shorthand, in px, or 0 if unset.
+def test_the_pills_sit_where_a_reader_can_see_them_without_covering_the_console() -> None:
+    """A pill that renders off-screen, or over a control, has satisfied every other assertion.
 
-    Only the shorthand is read because that is the only form these stylesheets use, and a
-    parser that quietly returned 0 for a longhand it could not see would make the assertion
-    below pass by blindness.
+    The banner this replaced once rendered 32px ABOVE the viewport in this very console: a margin
+    written for a padded ``body`` was carried into one with none. So the geometry is asserted,
+    not assumed: the pills are fixed at the top right with a non-negative offset, and the
+    embedded layout (no header of its own) leaves them a clear top strip taller than they are.
     """
     import re as _re
 
-    match = _re.search(rf"^\s*{property_name}:\s*([^;]+);", block, _re.MULTILINE)
-    if match is None:
-        return 0
-    first = match.group(1).split()[0]
-    assert first.endswith("px") or first == "0", (
-        f"{property_name} shorthand starts with {first!r}, which this check cannot read; "
-        "express the offset in px so the geometry stays assertable"
-    )
-    return int(first.removesuffix("px"))
-
-
-def _rule(css: str, selector: str) -> str:
-    start = css.index(selector + " {")
-    return css[start : css.index("}", start)]
-
-
-def test_the_banner_is_where_a_reader_can_actually_see_it() -> None:
-    """A banner that renders off-screen has satisfied every other assertion in this file.
-
-    The strip is full-bleed, and it reaches the viewport edge by cancelling the padding its host
-    carries: ``margin: -32px -18px 20px`` against a ``body`` with ``padding: 32px 18px``. That is
-    correct, and it is correct ONLY in the consoles it was written for. Carried into a console
-    whose ``body`` has no padding -- there is nothing to cancel -- the same three numbers hoist
-    the strip 32px ABOVE the viewport. It renders, it holds the right text, it is in the DOM on
-    every page load, and it is visible on none.
-
-    That is the second half of the same defect as the fetch above, and it has the same shape: a
-    rule that assumed a console shape this tree does not have, failing in the one way nothing
-    reports. Neither half alone would have put the strip on the page.
-
-    So this asserts the geometry rather than the literal, which keeps it true under both shapes:
-    whatever the banner pulls up by, the host must carry at least that much padding to give back.
-    """
     css = Path("ui/app/globals.css").read_text()
-    pulled_up = _first_px(_rule(css, ".provenance-banner"), "margin")
-    given_back = _first_px(_rule(css, "body"), "padding")
+    start = css.index(".model-pills {")
+    block = css[start : css.index("}", start)]
+    assert "position: fixed;" in block
+    top = _re.search(r"^\s*top:\s*(\d+)px;", block, _re.MULTILINE)
+    assert top is not None and int(top.group(1)) >= 0, "the pills sit above the viewport"
+    assert _re.search(r"^\s*right:\s*\d+px;", block, _re.MULTILINE), "not pinned to the right"
+    assert ".provenance-banner" not in css, "the old banner's rule is back"
 
-    assert pulled_up + given_back >= 0, (
-        f"the banner pulls itself up {-pulled_up}px to cancel padding, but body gives back only "
-        f"{given_back}px, so the strip renders {-(pulled_up + given_back)}px above the viewport "
-        "and no reader ever sees the provenance this file exists to guarantee"
+    layout = Path("ui/app/layout.tsx").read_text()
+    assert "<ModelPills />" in layout, "the pills are not mounted on every page"
+    assert 'className="px-4 pb-4 pt-8"' in layout, (
+        "the embedded layout lost the top strip the fixed pills sit in, so they now cover the "
+        "embedded page's first row"
     )
+
+
+def test_the_pills_read_both_answer_headers_through_one_node_tested_wrapper() -> None:
+    """The pill names what ANSWERED only if something reads the two headers the service emits.
+
+    ``ui/tests/answer-provenance.test.mjs`` proves the wrapper's behaviour under ``npm test``;
+    this holds the wiring from the offline gate, so a pill that stopped reading a header, or an
+    old banner that came back beside it, fails here rather than in a screenshot.
+    """
+    pills = Path("ui/app/ModelPills.tsx").read_text()
+    assert "generator_model" in pills and "runtime" in pills
+    watcher = Path("ui/lib/answer-provenance.mjs").read_text()
+    for header in ('"x-answered-by"', '"x-search-used"'):
+        assert header in watcher, "the pills never read " + header
+    assert Path("ui/tests/answer-provenance.test.mjs").is_file()
+    assert not Path("ui/app/ProvenanceBanner.tsx").exists(), "the old banner is back"

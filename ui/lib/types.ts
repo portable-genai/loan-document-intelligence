@@ -134,4 +134,6 @@ export interface Health {
   status: string;
   profile: string;
   region: string;
+  runtime: string;
+  generator_model: string;
 }

@@ -103,7 +103,11 @@ from the request identity (a Cloud IAP assertion in secure mode, a seeded person
 - `POST /v1/process {application, documents[]}` -> `LoanApplicationCase`.
 - `POST /v1/extract {document}` -> `DocumentExtract`.
 - `POST /v1/validate {application_id, applicant, extracts[]}` -> `CrossValidationResult`.
-- `GET /healthz` -> `{status, profile, region}`.
+- `GET /healthz` -> `{status, profile, region, runtime, generator_model}`. `runtime` and
+  `generator_model` are what the console's model pill shows before any answer.
+- Every response to a request in which a model answered carries `X-Answered-By` (the model ids
+  the adapters noted, in call order), and `X-Search-Used: true` when a call used an online
+  search tool (none here does). A request that called no model carries neither.
 - `GET /v1/personas` -> `[{id, subject, tenant, principals}]` (seeded dev personas; empty
   outside the `local` profile).
 - `GET /.well-known/agent-card.json` -> AgentCard `{name, description, url, version,

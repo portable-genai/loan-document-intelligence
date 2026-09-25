@@ -43,8 +43,6 @@ models:
   location: ${LOAN_DOC_MODEL_LOCATION:-asia-southeast1}
   reasoning: gemini-3.5-flash          # GA : income normalisation + explanation (thinking=high)
   triage: gemini-3.5-flash        # GA : routing / doc-type triage
-  hard_reasoning: gemini-3.5-flash  # in-region SG commitment; no Gemini 3 PRO tier serves any location
-  use_hard_reasoning: false
 
 document_ai:
   # NOT the deploy region, and not a silent inheritance of it. Document AI does not run in
