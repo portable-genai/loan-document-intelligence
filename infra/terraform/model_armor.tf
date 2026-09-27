@@ -56,5 +56,27 @@ resource "google_model_armor_template" "loan_doc" {
     }
   }
 
+  # Required by the API even though every field inside it is optional: creating the template
+  # without this block succeeds, and the next apply then fails with "The 'template_metadata'
+  # field is required" while trying to remove what the service itself populated. Neither
+  # `terraform validate` nor the offline suite resolves the API's own field requirements, so
+  # this is only ever found by applying twice.
+  template_metadata {
+    # Multi-language detection is a regional capability, refused the same way the malicious
+    # URI filter is, so it follows the same variable and the same disclosure.
+    dynamic "multi_language_detection" {
+      for_each = var.model_armor_full_capabilities ? [1] : []
+      content {
+        enable_multi_language_detection = true
+      }
+    }
+
+    # OFF, and this is the decision rather than the default. Sanitize-operation logs carry
+    # the prompt text that was screened, and the prompt here is text extracted from a borrower's loan documents.
+    # Copying it into ordinary operation logs would put that material outside the
+    # CMEK-encrypted, access-controlled stores this stack exists to keep it in.
+    log_sanitize_operations = false
+  }
+
   depends_on = [google_project_service.required]
 }

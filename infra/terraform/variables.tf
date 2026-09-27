@@ -263,10 +263,10 @@ variable "model_armor_full_capabilities" {
   default     = true
   description = <<-EOT
     Whether the guardrail template asks for the capabilities that are not served in every
-    region: the malicious-URI filter.
+    region: the malicious-URI filter and multi-language detection.
 
     True by default, because a deployment should get the whole guardrail unless it has a
-    reason not to. asia-southeast1 does not serve it, and Model Armor does not degrade -- it
+    reason not to. asia-southeast1 serves neither, and Model Armor does not degrade -- it
     refuses the template with CAPABILITY_NOT_SUPPORTED, so the stack does not deploy at all.
     A deployment there sets this false, which narrows the guardrail and is a disclosure to
     make in deployment-posture.md rather than a silent downgrade.
