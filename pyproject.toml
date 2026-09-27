@@ -43,8 +43,14 @@ gcp = [
   "google-cloud-documentai>=2.31",
   "google-cloud-dlp>=3.20",
   "google-cloud-logging>=3.11",
-  "opentelemetry-sdk>=1.27",
-  "opentelemetry-exporter-gcp-trace>=1.7",
+  # The gcp tracer (adapters/gcp/tracer.py) is the kit's build_tracer: OTLP through the
+  # agent-observability collector and nowhere else. Its runtime is declared here rather
+  # than taken as hex-service-kit[otel], whose opentelemetry-sdk>=1.44 floor google-adk
+  # refuses (it caps the SDK at 1.42.1); the kit's tracer runs on either.
+  "opentelemetry-sdk>=1.39",
+  "opentelemetry-exporter-otlp-proto-http>=1.39",
+  "requests>=2.31",
+  "google-auth>=2.30",
   "a2a-sdk[http-server]>=1.1",
   "mcp>=2.1",
 ]
