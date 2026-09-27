@@ -53,8 +53,8 @@ The default `local` path imports no `google-cloud-*` package.
   Unified SDK `google-genai`. ADK `google-adk==2.7.1`. A2A v1.0 + MCP 2026-07-28.
 - Extraction: Document AI (a form/lending parser) in `asia-southeast1`.
 - Safety: Model Armor (guardrail) + Sensitive Data Protection / DLP (PII redaction).
-- Audit: Cloud Logging locked WORM bucket, retention 2557 days. Tracing: Cloud Trace via
-  OpenTelemetry, message-content capture OFF. Eval: Gen AI evaluation service.
+- Audit: Cloud Logging locked WORM bucket, retention 2557 days. Tracing: OpenTelemetry OTLP through
+  the agent-observability collector into Cloud Trace, message-content capture OFF. Eval: Gen AI evaluation service.
 - Core deps are framework-light (pydantic, pyyaml, httpx, tenacity, typer, fastapi,
   uvicorn, python-dateutil); all google-cloud-* / google-adk / google-genai live in `[gcp]`.
 

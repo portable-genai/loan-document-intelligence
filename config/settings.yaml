@@ -174,8 +174,8 @@ adapters:
     platform: loan_doc_intel.adapters.platform.remote_audit:RemoteAuditAdapter
     onprem: loan_doc_intel.adapters.onprem.audit:OnPremAuditAdapter
   tracer:
-    gcp: loan_doc_intel.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
-    platform: loan_doc_intel.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    gcp: loan_doc_intel.adapters.gcp.tracer:CloudTracerAdapter
+    platform: loan_doc_intel.adapters.gcp.tracer:CloudTracerAdapter
     local: loan_doc_intel.adapters.local.tracer:LocalNoopTracerAdapter
     live: loan_doc_intel.adapters.local.tracer:LocalNoopTracerAdapter
     onprem: loan_doc_intel.adapters.onprem.tracer:OnPremTracerAdapter
