@@ -7,11 +7,13 @@ FULL R1 safety chain (B5 handles applicant PII), in order:
       redact(inputs)                      [P-04: PII removed before model / audit]
       -> guardrail.screen(INPUT)          [blocked -> audit BLOCKED + blocked case]
       -> per document: extraction.extract -> redact the extract
+      -> guardrail.screen(INPUT) on the normalisation prompt as sent
+                                          [it carries the extracts; blocked -> blocked case]
       -> llm normalise extracts into IncomeFigure[]   [model normalises, never decides]
       -> CrossValidator.validate          [DETERMINISTIC : the verdict authority]
       -> IncomeVerificationService verdict
       -> assemble LoanApplicationCase (requires_human_review = True)
-      -> guardrail.screen(OUTPUT)
+      -> guardrail.screen(OUTPUT)         [the case summary AND every figure the model wrote]
       -> review policy (always true)
       -> audit.record(redacted prompt + response)
 
@@ -233,8 +235,11 @@ class LoanDocService:
             content, mime_type = self._load_content(document)
             extracts.append(self._extract_and_redact(document, content, mime_type))
 
-        # 4) LLM normalises the extracts into IncomeFigure[] (never decides a verdict).
+        # 4) LLM normalises the extracts into IncomeFigure[] (never decides a verdict). None
+        # means the guardrail blocked the normalisation prompt before it reached the model.
         figures = self._normalise_income(applicant, extracts)
+        if figures is None:
+            return self._blocked_case(applicant, application_id, documents, redacted_prompt, actor)
 
         # 5) Deterministic cross-validation : the verdict authority.
         validation: CrossValidationResult = self._validator.validate(
@@ -258,8 +263,8 @@ class LoanDocService:
             generated_at=utcnow(),
         )
 
-        # 8) Guardrail screen (OUTPUT) on a redacted projection of the case.
-        out_text = self._output_summary(case)
+        # 8) Guardrail screen (OUTPUT) on the case summary and every figure the model wrote.
+        out_text = self._output_text(case)
         out_verdict: GuardrailVerdict = self._guardrail.screen(out_text, Direction.OUTPUT)
         if not out_verdict.allowed:
             return self._blocked_case(
@@ -315,12 +320,23 @@ class LoanDocService:
     # ------------------------------------------------------------------ #
     def _normalise_income(
         self, applicant: Any, extracts: list[DocumentExtract]
-    ) -> list[IncomeFigure]:
+    ) -> list[IncomeFigure] | None:
+        """Normalise the extracts into figures; ``None`` when the prompt is blocked."""
         if not extracts:
             return []
         declared = self._declared_text(applicant)
         system = NORMALISE_INCOME_SYSTEM.format(citation_rules=_CITATION_RULES)
-        user = NORMALISE_INCOME_USER.format(declared=declared, extracts=g.render_extracts(extracts))
+        prompt = NORMALISE_INCOME_USER.format(
+            declared=declared, extracts=g.render_extracts(extracts)
+        )
+        # The rendered extracts are document text, so this prompt, not the input description
+        # screened at entry, is what the model is asked. Screen it, and send the model exactly
+        # the text the guardrail saw. Outside the try below: a guardrail error is a refusal,
+        # not a normalisation failure to degrade past.
+        verdict: GuardrailVerdict = self._guardrail.screen(prompt, Direction.INPUT)
+        if not verdict.allowed:
+            return None
+        user = verdict.sanitized_text or prompt
         request = g.build_llm_request(
             system_instruction=system,
             user_content=user,
@@ -410,6 +426,22 @@ class LoanDocService:
             f"Verdict {verdict}; verified income {amount}; {n_checks} cross-validation "
             f"checks; requires human review."
         )
+
+    @classmethod
+    def _output_text(cls, case: LoanApplicationCase) -> str:
+        """The case summary plus every figure the model wrote, for the OUTPUT screen.
+
+        The model's figures reach the caller as ``income.income_figures`` and the verified
+        income. Amount, period and kind are coerced and the source id must name an extracted
+        document, so ``currency`` is the one field that carries text the model chose.
+        """
+        lines = [cls._output_summary(case)]
+        figures = case.income.income_figures if case.income else ()
+        lines += [
+            f"{f.source_doc_id}: {f.amount} {f.currency} per {f.period.value} ({f.kind.value})"
+            for f in figures
+        ]
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------ #
     # Blocked / degraded cases
