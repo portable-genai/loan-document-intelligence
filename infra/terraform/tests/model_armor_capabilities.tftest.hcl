@@ -25,6 +25,10 @@ variables {
   # for, and VPC-SC on must name a numeric access policy; neither bears on the guardrail.
   human_review_iap_audience = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
   enable_vpc_sc             = false
+  # Slice 7 turned these reversible controls off by default on 2026-10-01. The runs in this
+  # file were written under the old default, so the file states it; a run that sets one
+  # explicitly still overrides it. posture_defaults.tftest.hcl pins the new default.
+  enable_org_policies = true
 }
 
 run "full_capabilities_stated_request_both_regional_features" {
