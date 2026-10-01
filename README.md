@@ -39,11 +39,13 @@ flowchart TD
   B --> C["guardrail.screen INPUT"]
   C -->|blocked| Z["blocked case, audit BLOCKED, human review"]
   C -->|allowed| D["per document: extraction.extract then redact extract"]
-  D --> E["llm: normalise into IncomeFigure list (never decides)"]
+  D --> D2["guardrail.screen INPUT on the normalisation prompt (carries the extracts)"]
+  D2 -->|blocked| Z
+  D2 -->|allowed| E["llm: normalise into IncomeFigure list (never decides)"]
   E --> F["CrossValidator.validate (DETERMINISTIC, the verdict authority)"]
   F --> G["IncomeVerificationService: derive verified income and verdict"]
   G --> H["assemble LoanApplicationCase (requires_human_review true)"]
-  H --> I["guardrail.screen OUTPUT"]
+  H --> I["guardrail.screen OUTPUT (case summary and every model-written figure)"]
   I --> J["LoanReviewPolicy: always human review"]
   J --> K["audit.record (already redacted, WORM)"]
 ```

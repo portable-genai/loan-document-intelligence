@@ -87,9 +87,10 @@ Every figure is cited to a source document and field; every interaction is audit
 ### Pipeline (R1 full safety; tracer.span; audited)
 
 `redaction.redact(inputs)` -> `guardrail.screen(INPUT)` -> per document `extraction.extract`
-then redact the extract -> `llm` normalise into IncomeFigure[] -> `CrossValidator.validate`
+then redact the extract -> `guardrail.screen(INPUT)` on the normalisation prompt as sent (it
+carries the extracts) -> `llm` normalise into IncomeFigure[] -> `CrossValidator.validate`
 (deterministic) -> `IncomeVerificationService` verdict -> assemble LoanApplicationCase ->
-`guardrail.screen(OUTPUT)` -> review policy (always true) -> `audit.record`. A guardrail
+`guardrail.screen(OUTPUT)` on the case summary and every figure the model wrote -> review policy (always true) -> `audit.record`. A guardrail
 block, missing documents and malformed model JSON all degrade to a safe, human-review
 flagged case rather than crashing.
 
